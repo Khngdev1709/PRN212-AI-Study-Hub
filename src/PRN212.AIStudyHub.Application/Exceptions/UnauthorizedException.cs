@@ -1,6 +1,6 @@
-namespace PRN212.AIStudyHub.Application.Exceptions;
-
-public class UnauthorizedException : Exception
+namespace PRN212.AIStudyHub.Application.Exceptions
 {
-  public UnauthorizedException(string message) : base(message) { }
+  public class UnauthorizedException(string message) : Exception(message)
+  {
+  }
 }

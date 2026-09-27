@@ -1,6 +1,6 @@
-namespace PRN212.AIStudyHub.Application.Exceptions;
-
-public class NotFoundException : Exception
+namespace PRN212.AIStudyHub.Application.Exceptions
 {
-  public NotFoundException(string message) : base(message) { }
+  public class NotFoundException(string message) : Exception(message)
+  {
+  }
 }

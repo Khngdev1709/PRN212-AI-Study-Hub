@@ -1,19 +1,17 @@
-using System;
-using System.Collections.Generic;
-
-namespace PRN212.AIStudyHub.Domain.Entities;
-
-public partial class ChatMessage
+namespace PRN212.AIStudyHub.Domain.Entities
 {
-  public Guid Id { get; set; }
+  public partial class ChatMessage
+  {
+    public Guid Id { get; set; }
 
-  public Guid SessionId { get; set; }
+    public Guid SessionId { get; set; }
 
-  public string Sender { get; set; } = null!;
+    public string Sender { get; set; } = null!;
 
-  public string Content { get; set; } = null!;
+    public string Content { get; set; } = null!;
 
-  public DateTime SentAt { get; set; }
+    public DateTime SentAt { get; set; }
 
-  public virtual ChatSession Session { get; set; } = null!;
+    public virtual ChatSession Session { get; set; } = null!;
+  }
 }

@@ -1,8 +1,16 @@
 using PRN212.AIStudyHub.Application.DTOs.Cloud;
 
-namespace PRN212.AIStudyHub.Application.Services.Cloud;
-
-public interface ICloudStorageService
+namespace PRN212.AIStudyHub.Application.Interfaces.Cloud
 {
-  Task<CloudUploadResult> UploadRawFile(Stream fileStream, string fileName, CancellationToken cancellationToken = default);
+  public interface ICloudStorageService
+  {
+    Task<CloudUploadResult> UploadRawFile(
+      Stream fileStream,
+      string fileName,
+      CancellationToken cancellationToken = default);
+
+    Task<Stream> DownloadFileStream(
+      string fileUrl,
+      CancellationToken cancellationToken = default);
+  }
 }

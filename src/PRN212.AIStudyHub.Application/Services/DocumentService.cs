@@ -1,364 +1,368 @@
 using Microsoft.EntityFrameworkCore;
+
 using PRN212.AIStudyHub.Application.DTOs.Common;
 using PRN212.AIStudyHub.Application.DTOs.Document;
 using PRN212.AIStudyHub.Application.Exceptions;
 using PRN212.AIStudyHub.Application.Interfaces;
-using PRN212.AIStudyHub.Application.Services.Cloud;
+using PRN212.AIStudyHub.Application.Interfaces.Cloud;
 using PRN212.AIStudyHub.Domain.Entities;
 
-namespace PRN212.AIStudyHub.Application.Services;
-
-public class DocumentService(IAppDbContext context, ICloudStorageService cloudStorageService) : IDocumentService
+namespace PRN212.AIStudyHub.Application.Services
 {
-  public async Task<DocumentResponseDto> UploadDocument(
-	  UploadDocumentCommand request,
-	  Guid userId,
-	  CancellationToken cancellationToken = default)
+  public class DocumentService(IAppDbContext context, ICloudStorageService cloudStorageService) : IDocumentService
   {
-	var isSubjectExist = await context.Subjects.AsNoTracking()
-			.AnyAsync(subject => subject.Id == request.SubjectId, cancellationToken);
+    public async Task<DocumentResponseDto> UploadDocument(
+        UploadDocumentCommand request,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+      var isSubjectExist = await context.Subjects.AsNoTracking()
+              .AnyAsync(subject => subject.Id == request.SubjectId, cancellationToken);
 
-	if (!isSubjectExist)
-	  throw new NotFoundException($"Subject with ID '{request.SubjectId}' was not found.");
+      if (!isSubjectExist)
+      {
+        throw new NotFoundException($"Subject with ID '{request.SubjectId}' was not found.");
+      }
 
-	var cloudUploadResult = await cloudStorageService.UploadRawFile(
-			request.FileStream,
-			request.FileName,
-			cancellationToken);
+      var cloudUploadResult = await cloudStorageService.UploadRawFile(
+              request.FileStream,
+              request.FileName,
+              cancellationToken);
 
-	var newDocument = new Document
-	{
-	  Id = Guid.CreateVersion7(),
-	  UserId = userId,
-	  SubjectId = request.SubjectId,
-	  Title = request.Title,
-	  FileName = request.FileName,
-	  StoragePath = cloudUploadResult.SecureUrl,
-	  FileSize = request.FileSize,
-	  FileExtension = Path.GetExtension(request.FileName),
-	  ContentType = request.ContentType,
-	  UploadedAt = DateTime.UtcNow,
-	  IsCloudStored = true,
-	  CloudPublicId = cloudUploadResult.PublicId,
-	  IsPublic = request.IsPublic,
-	  ProcessingStatus = "Pending",
-	  IsDeleted = false
-	};
+      Document newDocument = new Document
+      {
+        Id = Guid.CreateVersion7(),
+        UserId = userId,
+        SubjectId = request.SubjectId,
+        Title = request.Title,
+        FileName = request.FileName,
+        StoragePath = cloudUploadResult.SecureUrl,
+        FileSize = request.FileSize,
+        FileExtension = Path.GetExtension(request.FileName),
+        ContentType = request.ContentType,
+        UploadedAt = DateTime.UtcNow,
+        IsCloudStored = true,
+        CloudPublicId = cloudUploadResult.PublicId,
+        IsPublic = request.IsPublic,
+        ProcessingStatus = "Pending",
+        IsDeleted = false
+      };
 
-	context.Documents.Add(newDocument);
-	await context.SaveChangesAsync(cancellationToken);
+      _ = context.Documents.Add(newDocument);
+      _ = await context.SaveChangesAsync(cancellationToken);
 
-	return new DocumentResponseDto(
-		newDocument.Id,
-		newDocument.Title,
-		newDocument.FileName,
-		newDocument.StoragePath,
-		newDocument.CloudPublicId,
-		newDocument.IsCloudStored,
-		newDocument.FileSize,
-		newDocument.FileExtension,
-		newDocument.ContentType,
-		newDocument.UploadedAt,
-		newDocument.IsPublic,
-		newDocument.SubjectId);
-  }
+      return new DocumentResponseDto(
+          newDocument.Id,
+          newDocument.Title,
+          newDocument.FileName,
+          newDocument.StoragePath,
+          newDocument.CloudPublicId,
+          newDocument.IsCloudStored,
+          newDocument.FileSize,
+          newDocument.FileExtension,
+          newDocument.ContentType,
+          newDocument.UploadedAt,
+          newDocument.IsPublic,
+          newDocument.SubjectId);
+    }
 
-  public async Task<List<DocumentItemDto>> GetMyDocuments(
-	  Guid userId,
-	  Guid? subjectId = null,
-	  CancellationToken cancellationToken = default)
-  {
-	var query = context.Documents.AsNoTracking()
-			.Include(d => d.Subject)
-			.Where(d => d.UserId == userId && d.IsDeleted == false);
+    public async Task<List<DocumentItemDto>> GetMyDocuments(
+        Guid userId,
+        Guid? subjectId = null,
+        CancellationToken cancellationToken = default)
+    {
+      var query = context.Documents.AsNoTracking()
+              .Include(d => d.Subject)
+              .Where(d => d.UserId == userId && !d.IsDeleted);
 
-	if (subjectId.HasValue)
-	{
-	  query = query.Where(d => d.SubjectId == subjectId.Value);
-	}
+      if (subjectId.HasValue)
+      {
+        query = query.Where(d => d.SubjectId == subjectId.Value);
+      }
 
-	var result = await query
-		.OrderByDescending(d => d.UploadedAt)
-		.Select(d => new DocumentItemDto(
-			d.Id,
-			d.Title,
-			d.FileName,
-			d.SubjectId,
-			d.Subject.Name,
-			d.UploadedAt,
-			d.ProcessingStatus,
-			d.IsPublic))
-		.ToListAsync(cancellationToken);
+      var result = await query
+          .OrderByDescending(d => d.UploadedAt)
+          .Select(d => new DocumentItemDto(
+              d.Id,
+              d.Title,
+              d.FileName,
+              d.SubjectId,
+              d.Subject.Name,
+              d.UploadedAt,
+              d.ProcessingStatus,
+              d.IsPublic))
+          .ToListAsync(cancellationToken);
 
-	return result;
-  }
+      return result;
+    }
 
-  public async Task<DocumentResponseDto> GetDocumentById(
-	  Guid id,
-	  Guid userId,
-	  CancellationToken cancellationToken = default)
-  {
-	var docs = await context.Documents.AsNoTracking()
-			.FirstOrDefaultAsync(d => d.Id == id && d.IsDeleted == false, cancellationToken);
+    public async Task<DocumentResponseDto> GetDocumentById(
+        Guid id,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+      var docs = await context.Documents.AsNoTracking()
+              .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted, cancellationToken) ?? throw new NotFoundException($"Document with ID '{id}' was not found.");
+      return docs.UserId != userId && !docs.IsPublic
+        ? throw new ForbiddenException("You do not have permission to view this private document.")
+        : new DocumentResponseDto(
+          docs.Id,
+          docs.Title,
+          docs.FileName,
+          docs.StoragePath,
+          docs.CloudPublicId,
+          docs.IsCloudStored,
+          docs.FileSize,
+          docs.FileExtension,
+          docs.ContentType,
+          docs.UploadedAt,
+          docs.IsPublic,
+          docs.SubjectId);
+    }
 
-	if (docs == null)
-	{
-	  throw new NotFoundException($"Document with ID '{id}' was not found.");
-	}
+    public async Task<bool> DeleteDocument(
+        Guid id,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+      var doc = await context.Documents
+              .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted, cancellationToken) ?? throw new NotFoundException($"Document with ID '{id}' was not found.");
+      if (doc.UserId != userId)
+      {
+        throw new ForbiddenException("Only the owner can delete this document.");
+      }
 
-	if (docs.UserId != userId && docs.IsPublic == false)
-	{
-	  throw new ForbiddenException("You do not have permission to view this private document.");
-	}
+      doc.IsDeleted = true;
+      doc.DeletedAt = DateTime.UtcNow;
 
-	return new DocumentResponseDto(
-		docs.Id,
-		docs.Title,
-		docs.FileName,
-		docs.StoragePath,
-		docs.CloudPublicId,
-		docs.IsCloudStored,
-		docs.FileSize,
-		docs.FileExtension,
-		docs.ContentType,
-		docs.UploadedAt,
-		docs.IsPublic,
-		docs.SubjectId);
-  }
+      _ = await context.SaveChangesAsync(cancellationToken);
+      return true;
+    }
 
-  public async Task<bool> DeleteDocument(
-	  Guid id,
-	  Guid userId,
-	  CancellationToken cancellationToken = default)
-  {
-	var doc = await context.Documents
-			.FirstOrDefaultAsync(d => d.Id == id && d.IsDeleted == false, cancellationToken);
+    public async Task<DocumentResponseDto> UpdateDocument(
+        Guid id,
+        Guid userId,
+        UpdateDocumentRequest request,
+        CancellationToken cancellationToken = default)
+    {
+      var docs = await context.Documents
+              .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted, cancellationToken) ?? throw new NotFoundException($"Document with ID '{id}' was not found.");
+      if (docs.UserId != userId)
+      {
+        throw new ForbiddenException("Only the owner can edit this document.");
+      }
 
-	if (doc == null)
-	{
-	  throw new NotFoundException($"Document with ID '{id}' was not found.");
-	}
+      var subjectExist = await context.Subjects.AnyAsync(s => s.Id == request.SubjectId, cancellationToken);
+      if (!subjectExist)
+      {
+        throw new NotFoundException($"Subject with ID '{request.SubjectId}' was not found.");
+      }
 
-	if (doc.UserId != userId)
-	{
-	  throw new ForbiddenException("Only the owner can delete this document.");
-	}
+      docs.Title = request.Title.Trim();
+      docs.SubjectId = request.SubjectId;
+      docs.IsPublic = request.IsPublic;
 
-	doc.IsDeleted = true;
-	doc.DeletedAt = DateTime.UtcNow;
+      _ = await context.SaveChangesAsync(cancellationToken);
 
-	await context.SaveChangesAsync(cancellationToken);
-	return true;
-  }
+      return new DocumentResponseDto(
+          docs.Id,
+          docs.Title,
+          docs.FileName,
+          docs.StoragePath,
+          docs.CloudPublicId,
+          docs.IsCloudStored,
+          docs.FileSize,
+          docs.FileExtension,
+          docs.ContentType,
+          docs.UploadedAt,
+          docs.IsPublic,
+          docs.SubjectId);
+    }
 
-  public async Task<DocumentResponseDto> UpdateDocument(
-	  Guid id,
-	  Guid userId,
-	  UpdateDocumentRequest request,
-	  CancellationToken cancellationToken = default)
-  {
-	var docs = await context.Documents
-			.FirstOrDefaultAsync(d => d.Id == id && d.IsDeleted == false, cancellationToken);
+    public async Task<DocumentResponseDto> UpdateDocumentSubject(
+        Guid documentId,
+        Guid currentUserId,
+        bool isAdmin,
+        UpdateDocumentSubjectRequest request,
+        CancellationToken cancellationToken = default)
+    {
+      var document = await context.Documents
+          .FirstOrDefaultAsync(doc => doc.Id == documentId && !doc.IsDeleted, cancellationToken) ?? throw new NotFoundException($"Document with ID '{documentId}' was not found");
+      if (document.UserId != currentUserId && !isAdmin)
+      {
+        throw new ForbiddenException("Only the owner can edit this document.");
+      }
 
-	if (docs == null)
-	{
-	  throw new NotFoundException($"Document with ID '{id}' was not found.");
-	}
+      var subjectExist = await context.Subjects
+          .AnyAsync(subject => subject.Id == request.SubjectId, cancellationToken);
+      if (!subjectExist)
+      {
+        throw new NotFoundException($"Subject with ID '{request.SubjectId}' was not found.");
+      }
 
-	if (docs.UserId != userId)
-	{
-	  throw new ForbiddenException("Only the owner can edit this document.");
-	}
+      document.SubjectId = request.SubjectId;
+      _ = await context.SaveChangesAsync(cancellationToken);
 
-	var subjectExist = await context.Subjects.AnyAsync(s => s.Id == request.SubjectId, cancellationToken);
-	if (!subjectExist)
-	{
-	  throw new NotFoundException($"Subject with ID '{request.SubjectId}' was not found.");
-	}
+      return new DocumentResponseDto(
+          document.Id,
+          document.Title,
+          document.FileName,
+          document.StoragePath,
+          document.CloudPublicId,
+          document.IsCloudStored,
+          document.FileSize,
+          document.FileExtension,
+          document.ContentType,
+          document.UploadedAt,
+          document.IsPublic,
+          document.SubjectId);
+    }
 
-	docs.Title = request.Title.Trim();
-	docs.SubjectId = request.SubjectId;
-	docs.IsPublic = request.IsPublic;
+    public async Task<PagedResult<DocumentResponseDto>> GetDocumentsBySubject(
+        Guid subjectId,
+        Guid currentUserId,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+      var isSubjectExist = await context.Subjects
+          .AnyAsync(subject => subject.Id == subjectId, cancellationToken);
 
-	await context.SaveChangesAsync(cancellationToken);
+      if (!isSubjectExist)
+      {
+        throw new NotFoundException($"Subject with ID '{subjectId}' was not found.");
+      }
 
-	return new DocumentResponseDto(
-		docs.Id,
-		docs.Title,
-		docs.FileName,
-		docs.StoragePath,
-		docs.CloudPublicId,
-		docs.IsCloudStored,
-		docs.FileSize,
-		docs.FileExtension,
-		docs.ContentType,
-		docs.UploadedAt,
-		docs.IsPublic,
-		docs.SubjectId);
-  }
+      var query = context.Documents.AsNoTracking()
+          .Where(doc => doc.SubjectId == subjectId && !doc.IsDeleted
+              && (doc.UserId == currentUserId || doc.IsPublic));
 
-  public async Task<DocumentResponseDto> UpdateDocumentSubject(
-	  Guid documentId,
-	  Guid currentUserId,
-	  bool isAdmin,
-	  UpdateDocumentSubjectRequest request,
-	  CancellationToken cancellationToken = default)
-  {
-	var document = await context.Documents
-		.FirstOrDefaultAsync(doc => doc.Id == documentId && !doc.IsDeleted, cancellationToken);
+      int totalCount = await query.CountAsync(cancellationToken);
 
-	if (document is null)
-	{
-	  throw new NotFoundException($"Document with ID '{documentId}' was not found");
-	}
+      var items = await query.OrderByDescending(doc => doc.UploadedAt)
+          .Skip((pageNumber - 1) * pageSize)
+          .Take(pageSize)
+          .Select(doc => new DocumentResponseDto(
+              doc.Id,
+              doc.Title,
+              doc.FileName,
+              doc.StoragePath,
+              doc.CloudPublicId,
+              doc.IsCloudStored,
+              doc.FileSize,
+              doc.FileExtension,
+              doc.ContentType,
+              doc.UploadedAt,
+              doc.IsPublic,
+              doc.SubjectId))
+          .ToListAsync(cancellationToken);
 
-	if (document.UserId != currentUserId && !isAdmin)
-	{
-	  throw new ForbiddenException("Only the owner can edit this document.");
-	}
+      return PagedResult<DocumentResponseDto>.Create(items, totalCount, pageNumber, pageSize);
+    }
 
-	var subjectExist = await context.Subjects
-		.AnyAsync(subject => subject.Id == request.SubjectId, cancellationToken);
-	if (!subjectExist)
-	{
-	  throw new NotFoundException($"Subject with ID '{request.SubjectId}' was not found.");
-	}
+    public async Task<PagedResult<DocumentResponseDto>> GetDocuments(
+        DocumentFilterQuery query,
+        Guid currentUserId,
+        CancellationToken cancellationToken = default)
+    {
+      int pageNumber = Math.Max(1, query.PageNumber);
+      int pageSize = Math.Clamp(query.PageSize, 1, 100);
 
-	document.SubjectId = request.SubjectId;
-	await context.SaveChangesAsync(cancellationToken);
+      var dbQuery = context.Documents.AsNoTracking()
+          .Where(doc => !doc.IsDeleted && (doc.UserId == currentUserId || doc.IsPublic));
 
-	return new DocumentResponseDto(
-		document.Id,
-		document.Title,
-		document.FileName,
-		document.StoragePath,
-		document.CloudPublicId,
-		document.IsCloudStored,
-		document.FileSize,
-		document.FileExtension,
-		document.ContentType,
-		document.UploadedAt,
-		document.IsPublic,
-		document.SubjectId);
-  }
+      if (!string.IsNullOrWhiteSpace(query.Keyword))
+      {
+        string trimmedKeyword = query.Keyword.Trim();
+        dbQuery = dbQuery.Where(doc => doc.Title.Contains(trimmedKeyword));
+      }
 
-  public async Task<PagedResult<DocumentResponseDto>> GetDocumentsBySubject(
-	  Guid subjectId,
-	  Guid currentUserId,
-	  int pageNumber,
-	  int pageSize,
-	  CancellationToken cancellationToken = default)
-  {
-	var isSubjectExist = await context.Subjects
-		.AnyAsync(subject => subject.Id == subjectId, cancellationToken);
+      if (query.SubjectId.HasValue)
+      {
+        dbQuery = dbQuery.Where(doc => doc.SubjectId == query.SubjectId.Value);
+      }
 
-	if (!isSubjectExist)
-	{
-	  throw new NotFoundException($"Subject with ID '{subjectId}' was not found.");
-	}
+      if (!string.IsNullOrWhiteSpace(query.FileExtension))
+      {
+        var extension = query.FileExtension.Trim().ToLowerInvariant();
 
-	var query = context.Documents.AsNoTracking()
-		.Where(doc => doc.SubjectId == subjectId && !doc.IsDeleted
-			&& (doc.UserId == currentUserId || doc.IsPublic));
+        if (!extension.StartsWith('.'))
+        {
+          extension = '.' + extension;
+        }
 
-	int totalCount = await query.CountAsync(cancellationToken);
+        dbQuery = dbQuery.Where(doc => doc.FileExtension.ToLower() == extension);
+      }
 
-	var items = await query.OrderByDescending(doc => doc.UploadedAt)
-		.Skip((pageNumber - 1) * pageSize)
-		.Take(pageSize)
-		.Select(doc => new DocumentResponseDto(
-			doc.Id,
-			doc.Title,
-			doc.FileName,
-			doc.StoragePath,
-			doc.CloudPublicId,
-			doc.IsCloudStored,
-			doc.FileSize,
-			doc.FileExtension,
-			doc.ContentType,
-			doc.UploadedAt,
-			doc.IsPublic,
-			doc.SubjectId))
-		.ToListAsync(cancellationToken);
+      if (query.UserId.HasValue)
+      {
+        dbQuery = query.UserId == currentUserId
+          ? dbQuery.Where(doc => doc.UserId == currentUserId)
+          : dbQuery.Where(doc => doc.UserId == query.UserId.Value && doc.IsPublic);
+      }
 
-	return PagedResult<DocumentResponseDto>.Create(items, totalCount, pageNumber, pageSize);
-  }
+      if (query.IsPublic.HasValue)
+      {
+        dbQuery = query.IsPublic.Value ? dbQuery.Where(doc => doc.IsPublic) : dbQuery.Where(doc => !doc.IsPublic && doc.UserId == currentUserId);
+      }
 
-  public async Task<PagedResult<DocumentResponseDto>> GetDocuments(
-	  DocumentFilterQuery query,
-	  Guid currentUserId,
-	  CancellationToken cancellationToken = default)
-  {
-	int pageNumber = Math.Max(1, query.PageNumber);
-	int pageSize = Math.Clamp(query.PageSize, 1, 100);
+      dbQuery = query.SortBy?.ToLowerInvariant() switch
+      {
+        "uploadedat_asc" => dbQuery.OrderBy(d => d.UploadedAt),
+        "title_asc" => dbQuery.OrderBy(d => d.Title),
+        "title_desc" => dbQuery.OrderByDescending(d => d.Title),
+        "filesize_asc" => dbQuery.OrderBy(d => d.FileSize),
+        "filesize_desc" => dbQuery.OrderByDescending(d => d.FileSize),
+        _ => dbQuery.OrderByDescending(d => d.UploadedAt)
+      };
 
-	var dbQuery = context.Documents.AsNoTracking()
-		.Where(doc => !doc.IsDeleted && (doc.UserId == currentUserId || doc.IsPublic));
+      int totalCount = await dbQuery.CountAsync(cancellationToken);
 
-	if (!string.IsNullOrWhiteSpace(query.Keyword))
-	{
-	  string trimmedKeyword = query.Keyword.Trim();
-	  dbQuery = dbQuery.Where(doc => doc.Title.Contains(trimmedKeyword));
-	}
+      var items = await dbQuery.Skip((pageNumber - 1) * pageSize).Take(pageSize)
+      .Select(doc => new DocumentResponseDto(
+          doc.Id,
+          doc.Title,
+          doc.FileName,
+          doc.StoragePath,
+          doc.CloudPublicId,
+          doc.IsCloudStored,
+          doc.FileSize,
+          doc.FileExtension,
+          doc.ContentType,
+          doc.UploadedAt,
+          doc.IsPublic,
+          doc.SubjectId
+      ))
+      .ToListAsync(cancellationToken);
 
-	if (query.SubjectId.HasValue)
-	  dbQuery = dbQuery.Where(doc => doc.SubjectId == query.SubjectId.Value);
+      return PagedResult<DocumentResponseDto>.Create(items, totalCount, pageNumber, pageSize);
+    }
 
-	if (!string.IsNullOrWhiteSpace(query.FileExtension))
-	{
-	  var extension = query.FileExtension.Trim().ToLowerInvariant();
+    public async Task<DocumentDownloadDto> DownloadDocument(
+        Guid id,
+        Guid currentUserId,
+        CancellationToken cancellationToken)
+    {
+      var document = await context.Documents.AsNoTracking()
+          .FirstOrDefaultAsync(doc => doc.Id == id && !doc.IsDeleted, cancellationToken) ?? throw new NotFoundException($"Document with ID {id} was not found.");
+      if (document.UserId != currentUserId && !document.IsPublic)
+      {
+        throw new ForbiddenException("You do not have permission to access this private document.");
+      }
 
-	  if (!extension.StartsWith('.'))
-		extension = '.' + extension;
+      if (string.IsNullOrWhiteSpace(document.StoragePath))
+      {
+        throw new CloudStorageException("Document storage path is missing");
+      }
 
-	  dbQuery = dbQuery.Where(doc => doc.FileExtension.ToLower() == extension);
-	}
+      var downloadStream = await cloudStorageService.DownloadFileStream(
+          document.StoragePath,
+          cancellationToken);
 
-	if (query.UserId.HasValue)
-	{
-	  if (query.UserId == currentUserId)
-		dbQuery = dbQuery.Where(doc => doc.UserId == currentUserId);
-	  else
-		dbQuery = dbQuery.Where(doc => doc.UserId == query.UserId.Value && doc.IsPublic);
-	}
-
-	if (query.IsPublic.HasValue)
-	{
-	  if (query.IsPublic.Value)
-		dbQuery = dbQuery.Where(doc => doc.IsPublic);
-	  else
-		dbQuery = dbQuery.Where(doc => !doc.IsPublic && doc.UserId == currentUserId);
-	}
-
-	dbQuery = query.SortBy?.ToLowerInvariant() switch
-	{
-	  "uploadedat_asc" => dbQuery.OrderBy(d => d.UploadedAt),
-	  "title_asc" => dbQuery.OrderBy(d => d.Title),
-	  "title_desc" => dbQuery.OrderByDescending(d => d.Title),
-	  "filesize_asc" => dbQuery.OrderBy(d => d.FileSize),
-	  "filesize_desc" => dbQuery.OrderByDescending(d => d.FileSize),
-	  _ => dbQuery.OrderByDescending(d => d.UploadedAt)
-	};
-
-	int totalCount = await dbQuery.CountAsync(cancellationToken);
-
-	var items = await dbQuery.Skip((pageNumber - 1) * pageSize).Take(pageSize)
-	.Select(doc => new DocumentResponseDto(
-		doc.Id,
-		doc.Title,
-		doc.FileName,
-		doc.StoragePath,
-		doc.CloudPublicId,
-		doc.IsCloudStored,
-		doc.FileSize,
-		doc.FileExtension,
-		doc.ContentType,
-		doc.UploadedAt,
-		doc.IsPublic,
-		doc.SubjectId
-	))
-	.ToListAsync(cancellationToken);
-
-	return PagedResult<DocumentResponseDto>.Create(items, totalCount, pageNumber, pageSize);
+      return new DocumentDownloadDto(
+          downloadStream,
+          document.ContentType,
+          document.FileName);
+    }
   }
 }

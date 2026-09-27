@@ -1,6 +1,6 @@
-namespace PRN212.AIStudyHub.Application.Exceptions;
-
-public class ConflictException : Exception
+namespace PRN212.AIStudyHub.Application.Exceptions
 {
-  public ConflictException(string message) : base(message) { }
+  public class ConflictException(string message) : Exception(message)
+  {
+  }
 }

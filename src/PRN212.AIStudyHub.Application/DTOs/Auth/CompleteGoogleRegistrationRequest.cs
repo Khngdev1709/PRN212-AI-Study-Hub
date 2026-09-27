@@ -1,6 +1,7 @@
-namespace PRN212.AIStudyHub.Application.DTOs.Auth;
-
-public class CompleteGoogleRegistrationRequest
+namespace PRN212.AIStudyHub.Application.DTOs.Auth
 {
-  public string Role { get; set; } = string.Empty;
+  public class CompleteGoogleRegistrationRequest
+  {
+    public string Role { get; set; } = string.Empty;
+  }
 }

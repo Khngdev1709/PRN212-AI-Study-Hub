@@ -1,17 +1,15 @@
-using System;
-using System.Collections.Generic;
-
-namespace PRN212.AIStudyHub.Domain.Entities;
-
-public partial class Subject
+namespace PRN212.AIStudyHub.Domain.Entities
 {
-  public Guid Id { get; set; }
+  public partial class Subject
+  {
+    public Guid Id { get; set; }
 
-  public string Name { get; set; } = null!;
+    public string Name { get; set; } = null!;
 
-  public string? Description { get; set; }
+    public string? Description { get; set; }
 
-  public DateTime CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
-  public virtual ICollection<Document> Document { get; set; } = new List<Document>();
+    public virtual ICollection<Document> Document { get; set; } = [];
+  }
 }

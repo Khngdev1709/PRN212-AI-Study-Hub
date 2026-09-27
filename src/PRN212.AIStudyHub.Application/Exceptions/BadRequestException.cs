@@ -1,6 +1,6 @@
-namespace PRN212.AIStudyHub.Application.Exceptions;
-
-public class BadRequestException : Exception
+namespace PRN212.AIStudyHub.Application.Exceptions
 {
-  public BadRequestException(string message) : base(message) { }
+  public class BadRequestException(string message) : Exception(message)
+  {
+  }
 }

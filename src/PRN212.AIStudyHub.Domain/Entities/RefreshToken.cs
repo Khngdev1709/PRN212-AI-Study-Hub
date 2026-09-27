@@ -1,21 +1,19 @@
-using System;
-using System.Collections.Generic;
-
-namespace PRN212.AIStudyHub.Domain.Entities;
-
-public partial class RefreshToken
+namespace PRN212.AIStudyHub.Domain.Entities
 {
-  public Guid Id { get; set; }
+  public partial class RefreshToken
+  {
+    public Guid Id { get; set; }
 
-  public Guid UserId { get; set; }
+    public Guid UserId { get; set; }
 
-  public string Token { get; set; } = null!;
+    public string Token { get; set; } = null!;
 
-  public DateTime ExpiresAt { get; set; }
+    public DateTime ExpiresAt { get; set; }
 
-  public bool IsRevoked { get; set; }
+    public bool IsRevoked { get; set; }
 
-  public DateTime CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
-  public virtual AppUser User { get; set; } = null!;
+    public virtual AppUser User { get; set; } = null!;
+  }
 }

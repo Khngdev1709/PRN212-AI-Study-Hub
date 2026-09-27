@@ -1,10 +1,11 @@
-namespace PRN212.AIStudyHub.Application.Interfaces;
-
-public interface IEmailService
+namespace PRN212.AIStudyHub.Application.Interfaces
 {
-  Task SendEmailAsync(
-	string toEmail,
-	string subject,
-	string body,
-	CancellationToken cancellationToken = default);
+  public interface IEmailService
+  {
+    Task SendEmailAsync(
+      string toEmail,
+      string subject,
+      string body,
+      CancellationToken cancellationToken = default);
+  }
 }
