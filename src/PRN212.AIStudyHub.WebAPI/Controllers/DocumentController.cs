@@ -206,5 +206,28 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
 
       return File(result.ContentStream, result.ContentType, result.FileName);
     }
+
+    /// <summary>
+    /// Lấy đường dẫn xem trước (preview) của tài liệu
+    /// </summary>
+    [HttpGet("{id:guid}/preview")]
+    [ProducesResponseType(typeof(ApiResponse<DocumentPreviewDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetDocumentPreviewAsync([FromRoute] Guid id, CancellationToken cancellationToken)
+    {
+      var document = await documentService.GetDocumentById(id, CurrentUserId, cancellationToken);
+
+      if (string.IsNullOrEmpty(document.StoragePath))
+      {
+        throw new BadRequestException("Document storage path is invalid or missing.");
+      }
+
+      return Ok(ApiResponse<DocumentPreviewDto>.SuccessResponse(
+        new DocumentPreviewDto(document.StoragePath),
+        "Document preview URL retrieved successfully."));
+    }
   }
 }
