@@ -181,8 +181,8 @@ public class DocumentController(IDocumentService documentService) : BaseApiContr
   /// <summary>
   /// Lấy đường dẫn xem trước (preview) của tài liệu
   /// </summary>
-  [HttpGet("{id}/preview")]
-  [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+  [HttpGet("{id:guid}/preview")]
+  [ProducesResponseType(typeof(ApiResponse<DocumentPreviewDto>), StatusCodes.Status200OK)]
   [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
   [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
   [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status403Forbidden)]
@@ -194,11 +194,11 @@ public class DocumentController(IDocumentService documentService) : BaseApiContr
 
 	if (string.IsNullOrEmpty(document.StoragePath))
 	{
-	  throw new BadRequestException("Tài liệu này không có đường dẫn hợp lệ.");
+	  throw new BadRequestException("Document storage path is invalid or missing.");
 	}
 
-	return Ok(ApiResponse<object>.SuccessResponse(
-	  new { PreviewUrl = document.StoragePath },
-	  "Lấy link xem trước thành công."));
+	return Ok(ApiResponse<DocumentPreviewDto>.SuccessResponse(
+	  new DocumentPreviewDto(document.StoragePath),
+	  "Document preview URL retrieved successfully."));
   }
 }
