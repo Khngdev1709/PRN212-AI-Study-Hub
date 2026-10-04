@@ -7,9 +7,11 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
 using PRN212.AIStudyHub.Application.Interfaces;
+using PRN212.AIStudyHub.Application.Interfaces.AI;
 using PRN212.AIStudyHub.Application.Interfaces.Cloud;
 using PRN212.AIStudyHub.Application.Interfaces.Security;
 using PRN212.AIStudyHub.Application.Services;
+using PRN212.AIStudyHub.Infrastructure.AI;
 using PRN212.AIStudyHub.Infrastructure.Cloud;
 using PRN212.AIStudyHub.Infrastructure.Data;
 using PRN212.AIStudyHub.Infrastructure.Security;
@@ -30,6 +32,7 @@ builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection(JwtSettings.SectionName));
 builder.Services.Configure<CloudinarySettings>(
   builder.Configuration.GetSection(CloudinarySettings.SectionName));
+builder.Services.Configure<GeminiOptions>(builder.Configuration.GetSection("GeminiAI"));
 
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
@@ -39,6 +42,8 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IQuickAIService, GeminiAIService>();
+builder.Services.AddScoped<IDeepAIService, GeminiAIService>();
 
 // =========================================================================
 // JWT AUTHENTICATION CONFIGURATION
