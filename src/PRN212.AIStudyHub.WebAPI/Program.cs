@@ -44,6 +44,7 @@ builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IQuickAIService, GeminiAIService>();
 builder.Services.AddScoped<IDeepAIService, GeminiAIService>();
+builder.Services.AddHttpClient();
 
 // =========================================================================
 // JWT AUTHENTICATION CONFIGURATION
