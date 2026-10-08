@@ -60,6 +60,40 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
             return Ok(Application.DTOs.Common.ApiResponse<Guid>.SuccessResponse(sessionId, "Session created successfully."));
         }
 
+        [HttpPost("session/{sessionId}/documents")]
+        public async Task<IActionResult> UpdateSessionDocuments(Guid sessionId, [FromBody] UpdateSessionDocumentsDto request)
+        {
+            var session = await _dbContext.ChatSession.FindAsync(sessionId);
+            if (session == null || session.UserId != CurrentUserId)
+            {
+                return NotFound("Session not found or unauthorized.");
+            }
+
+            // Remove old links
+            var existingLinks = await _dbContext.ChatSessionDocument
+                .Where(csd => csd.SessionId == sessionId)
+                .ToListAsync();
+            _dbContext.ChatSessionDocument.RemoveRange(existingLinks);
+
+            // Add new links
+            if (request.DocumentIds != null && request.DocumentIds.Any())
+            {
+                foreach (var docId in request.DocumentIds)
+                {
+                    _dbContext.ChatSessionDocument.Add(new ChatSessionDocument
+                    {
+                        SessionId = sessionId,
+                        DocumentId = docId,
+                        AttachedAt = DateTime.UtcNow
+                    });
+                }
+            }
+
+            await _dbContext.SaveChangesAsync();
+
+            return Ok(Application.DTOs.Common.ApiResponse<bool>.SuccessResponse(true, "Session documents updated successfully."));
+        }
+
         [HttpPost("query")]
         public async Task<IActionResult> Query([FromBody] ChatQueryDto request)
         {
