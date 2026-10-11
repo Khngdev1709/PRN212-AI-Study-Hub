@@ -5,6 +5,8 @@ using Google.GenAI.Types;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System;
+using System.Text.Json;
+using PRN212.AIStudyHub.Application.DTOs.AI;
 
 namespace PRN212.AIStudyHub.Infrastructure.AI
 {
@@ -25,30 +27,84 @@ namespace PRN212.AIStudyHub.Infrastructure.AI
       _httpClientFactory = httpClientFactory;
     }
 
-    public async Task<string> GenerateFlashcardsAsync(string documentContent)
+    public async Task<List<FlashcardDto>> GenerateFlashcardsAsync(string documentContent)
     {
       var prompt = $@"
 Bạn là một chuyên gia giáo dục. Hãy đọc tài liệu dưới đây và tạo ra các thẻ nhớ (flashcards) để học sinh ôn tập.
-Định dạng mỗi flashcard theo dạng JSON array chứa các object: {{ ""question"": """", ""answer"": """" }}
-Chỉ trả về chuỗi JSON hợp lệ, không kèm theo markdown (như ```json) hay văn bản nào khác.
+Định dạng trả về là một JSON Array hợp lệ, trong đó mỗi object chứa 2 trường:
+- ""question"": Câu hỏi ngắn gọn, trọng tâm để kiểm tra kiến thức.
+- ""answer"": Câu trả lời súc tích, chính xác.
+Chỉ trả về chuỗi JSON hợp lệ, không kèm theo giải thích hoặc markdown code block (như ```json).
 
 Tài liệu:
 {documentContent}
 ";
-      var response = await _client.Models.GenerateContentAsync(_modelId, prompt);
-      return response.Text ?? string.Empty;
+      var config = new GenerateContentConfig
+      {
+        ResponseMimeType = "application/json"
+      };
+
+      var response = await _client.Models.GenerateContentAsync(
+        model: _modelId,
+        contents: prompt,
+        config: config
+      );
+
+      var rawText = response.Text ?? "[]";
+
+      try
+      {
+        var flashcards = JsonSerializer.Deserialize<List<FlashcardDto>>(rawText, new JsonSerializerOptions
+        {
+          PropertyNameCaseInsensitive = true
+        });
+
+        return flashcards ?? new List<FlashcardDto>();
+      }
+      catch (JsonException ex)
+      {
+        throw new InvalidOperationException($"Lỗi phân tích JSON kết quả Flashcards từ Gemini: {ex.Message}. Nội dung AI trả về: {rawText}", ex);
+      }
     }
 
-    public async Task<string> SummarizeDocumentAsync(string documentContent)
+    public async Task<DocumentSummaryDto> SummarizeDocumentAsync(string documentContent)
     {
       var prompt = $@"
 Bạn là một trợ lý ảo thông minh. Hãy tóm tắt nội dung chính của tài liệu dưới đây một cách ngắn gọn, dễ hiểu nhưng phải bám sát với những tài liệu đã gửi. Không tự ý lấy thông tin, từ khóa, kiến thức ngoài tài liệu.
+Định dạng trả về là một JSON Object hợp lệ gồm 2 trường:
+- ""summaryContent"": Nội dung tóm tắt chi tiết, mạch lạc của tài liệu.
+- ""keyTakeaways"": Các điểm ghi nhớ cốt lõi hoặc ý chính quan trọng dưới dạng danh sách gạch đầu dòng.
+Chỉ trả về chuỗi JSON hợp lệ, không kèm theo giải thích hoặc markdown code block (như ```json).
 
 Tài liệu:
 {documentContent}
 ";
-      var response = await _client.Models.GenerateContentAsync(_modelId, prompt);
-      return response.Text ?? string.Empty;
+      var config = new GenerateContentConfig
+      {
+        ResponseMimeType = "application/json"
+      };
+
+      var response = await _client.Models.GenerateContentAsync(
+        model: _modelId,
+        contents: prompt,
+        config: config
+      );
+
+      var rawText = response.Text ?? "{}";
+
+      try
+      {
+        var summary = JsonSerializer.Deserialize<DocumentSummaryDto>(rawText, new JsonSerializerOptions
+        {
+          PropertyNameCaseInsensitive = true
+        });
+
+        return summary ?? new DocumentSummaryDto();
+      }
+      catch (JsonException ex)
+      {
+        throw new InvalidOperationException($"Lỗi phân tích JSON kết quả tóm tắt từ Gemini: {ex.Message}. Nội dung AI trả về: {rawText}", ex);
+      }
     }
 
     public async Task<string> ValidateIntentAsync(string userMessage)
