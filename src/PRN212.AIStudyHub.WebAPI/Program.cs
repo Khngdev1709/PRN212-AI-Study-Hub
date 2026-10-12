@@ -14,6 +14,7 @@ using PRN212.AIStudyHub.Application.Services;
 using PRN212.AIStudyHub.Infrastructure.AI;
 using PRN212.AIStudyHub.Infrastructure.Cloud;
 using PRN212.AIStudyHub.Infrastructure.Data;
+using PRN212.AIStudyHub.Infrastructure.DocumentProcessing;
 using PRN212.AIStudyHub.Infrastructure.Security;
 using PRN212.AIStudyHub.WebAPI.Middlewares;
 
@@ -44,6 +45,7 @@ builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IQuickAIService, GeminiAIService>();
 builder.Services.AddScoped<IDeepAIService, GeminiAIService>();
+builder.Services.AddScoped<IDocumentTextExtractor, DocumentTextExtractor>();
 builder.Services.AddHttpClient();
 
 // =========================================================================

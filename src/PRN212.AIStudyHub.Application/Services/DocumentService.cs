@@ -4,12 +4,17 @@ using PRN212.AIStudyHub.Application.DTOs.Common;
 using PRN212.AIStudyHub.Application.DTOs.Document;
 using PRN212.AIStudyHub.Application.Exceptions;
 using PRN212.AIStudyHub.Application.Interfaces;
+using PRN212.AIStudyHub.Application.Interfaces.AI;
 using PRN212.AIStudyHub.Application.Interfaces.Cloud;
 using PRN212.AIStudyHub.Domain.Entities;
 
 namespace PRN212.AIStudyHub.Application.Services
 {
-  public class DocumentService(IAppDbContext context, ICloudStorageService cloudStorageService) : IDocumentService
+  public class DocumentService(
+      IAppDbContext context,
+      ICloudStorageService cloudStorageService,
+      IDocumentTextExtractor textExtractor,
+      IDeepAIService deepAIService) : IDocumentService
   {
     public async Task<DocumentResponseDto> UploadDocument(
         UploadDocumentCommand request,
@@ -24,8 +29,30 @@ namespace PRN212.AIStudyHub.Application.Services
         throw new NotFoundException($"Subject with ID '{request.SubjectId}' was not found.");
       }
 
+      // Buffer stream để tránh bị Cloudinary đóng/đọc hết stream
+      using var memoryStream = new MemoryStream();
+      await request.FileStream.CopyToAsync(memoryStream, cancellationToken);
+      memoryStream.Position = 0;
+
+      // 1. Trích xuất text từ file trước khi stream bị can thiệp
+      var fileExt = Path.GetExtension(request.FileName);
+      string extractedText = string.Empty;
+      try
+      {
+        extractedText = await textExtractor.ExtractTextAsync(
+            memoryStream,
+            fileExt,
+            cancellationToken);
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine($"[TextExtractor Warning]: {ex.Message}");
+      }
+
+      // Reset stream position để đẩy lên Cloudinary
+      memoryStream.Position = 0;
       var cloudUploadResult = await cloudStorageService.UploadRawFile(
-              request.FileStream,
+              memoryStream,
               request.FileName,
               cancellationToken);
 
@@ -38,18 +65,53 @@ namespace PRN212.AIStudyHub.Application.Services
         FileName = request.FileName,
         StoragePath = cloudUploadResult.SecureUrl,
         FileSize = request.FileSize,
-        FileExtension = Path.GetExtension(request.FileName),
+        FileExtension = fileExt,
         ContentType = request.ContentType,
         UploadedAt = DateTime.UtcNow,
         IsCloudStored = true,
         CloudPublicId = cloudUploadResult.PublicId,
         IsPublic = request.IsPublic,
-        ProcessingStatus = "Pending",
+        ProcessingStatus = "Processing",
         IsDeleted = false
       };
 
       _ = context.Documents.Add(newDocument);
       _ = await context.SaveChangesAsync(cancellationToken);
+
+      // 2. Tự động gọi AI Tóm tắt và lưu vào DocumentSummary
+      try
+      {
+        if (!string.IsNullOrWhiteSpace(extractedText))
+        {
+          var summaryDto = await deepAIService.SummarizeDocumentAsync(extractedText);
+
+          var documentSummary = new DocumentSummary
+          {
+            Id = Guid.NewGuid(),
+            DocumentId = newDocument.Id,
+            SummaryContent = string.IsNullOrWhiteSpace(summaryDto.SummaryContent)
+                ? "Tài liệu chưa có bản tóm tắt chi tiết."
+                : summaryDto.SummaryContent,
+            KeyTakeaways = summaryDto.KeyTakeaways,
+            CreatedAt = DateTime.UtcNow
+          };
+
+          context.DocumentSummaries.Add(documentSummary);
+        }
+        else
+        {
+          Console.WriteLine($"[AutoSummarize Info]: Không trích xuất được nội dung text từ file '{request.FileName}'. Bỏ qua tóm tắt AI.");
+        }
+
+        newDocument.ProcessingStatus = "Completed";
+        await context.SaveChangesAsync(cancellationToken);
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine($"[AutoSummarize Error]: {ex}");
+        newDocument.ProcessingStatus = "Failed";
+        await context.SaveChangesAsync(cancellationToken);
+      }
 
       return new DocumentResponseDto(
           newDocument.Id,

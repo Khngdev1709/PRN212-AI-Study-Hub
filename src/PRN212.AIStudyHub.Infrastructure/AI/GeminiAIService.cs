@@ -50,7 +50,7 @@ Tài liệu:
         config: config
       );
 
-      var rawText = response.Text ?? "[]";
+      var rawText = CleanJsonResponse(response.Text ?? "[]");
 
       try
       {
@@ -73,7 +73,7 @@ Tài liệu:
 Bạn là một trợ lý ảo thông minh. Hãy tóm tắt nội dung chính của tài liệu dưới đây một cách ngắn gọn, dễ hiểu nhưng phải bám sát với những tài liệu đã gửi. Không tự ý lấy thông tin, từ khóa, kiến thức ngoài tài liệu.
 Định dạng trả về là một JSON Object hợp lệ gồm 2 trường:
 - ""summaryContent"": Nội dung tóm tắt chi tiết, mạch lạc của tài liệu.
-- ""keyTakeaways"": Các điểm ghi nhớ cốt lõi hoặc ý chính quan trọng dưới dạng danh sách gạch đầu dòng.
+- ""keyTakeaways"": Các điểm ghi nhớ cốt lõi hoặc ý chính quan trọng dưới dạng danh sách gạch đầu dòng (chuỗi văn bản hoặc mảng các gạch đầu dòng).
 Chỉ trả về chuỗi JSON hợp lệ, không kèm theo giải thích hoặc markdown code block (như ```json).
 
 Tài liệu:
@@ -90,7 +90,7 @@ Tài liệu:
         config: config
       );
 
-      var rawText = response.Text ?? "{}";
+      var rawText = CleanJsonResponse(response.Text ?? "{}");
 
       try
       {
@@ -105,6 +105,29 @@ Tài liệu:
       {
         throw new InvalidOperationException($"Lỗi phân tích JSON kết quả tóm tắt từ Gemini: {ex.Message}. Nội dung AI trả về: {rawText}", ex);
       }
+    }
+
+    private static string CleanJsonResponse(string text)
+    {
+      if (string.IsNullOrWhiteSpace(text))
+        return text;
+
+      var cleaned = text.Trim();
+      if (cleaned.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+      {
+        cleaned = cleaned[7..];
+      }
+      else if (cleaned.StartsWith("```"))
+      {
+        cleaned = cleaned[3..];
+      }
+
+      if (cleaned.EndsWith("```"))
+      {
+        cleaned = cleaned[..^3];
+      }
+
+      return cleaned.Trim();
     }
 
     public async Task<string> ValidateIntentAsync(string userMessage)
