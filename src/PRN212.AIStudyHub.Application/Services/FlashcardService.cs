@@ -87,9 +87,23 @@ namespace PRN212.AIStudyHub.Application.Services
       throw new NotImplementedException();
     }
 
-    public Task<FlashcardItemDetailDto> UpdateCardStatusAsync(Guid cardId, Guid userId, UpdateFlashcardStatusRequest request, CancellationToken cancellationToken = default)
+    public async Task<FlashcardItemDetailDto> UpdateCardStatusAsync(Guid cardId, Guid userId, UpdateFlashcardStatusRequest request, CancellationToken cancellationToken = default)
     {
-      throw new NotImplementedException();
+      var card = await context.FlashcardItems.Include(item => item.Set).FirstOrDefaultAsync(item => item.Id == cardId, cancellationToken) ?? throw new NotFoundException($"Thẻ Flashcard với ID {cardId} không tồn tại");
+      if (card.Set.UserId != userId)
+      {
+        throw new ForbiddenException("Bạn không có quyền chỉnh sửa thẻ Flashcard này.");
+      }
+      card.IsMastered = request.isFinished;
+      await context.SaveChangesAsync(cancellationToken);
+
+      return new FlashcardItemDetailDto(
+        card.Id,
+        card.SetId,
+        card.Question,
+        card.Answer,
+        card.IsMastered,
+        card.CreatedAt);
     }
   }
 }
