@@ -77,14 +77,45 @@ namespace PRN212.AIStudyHub.Application.Services
         completionPercentage);
     }
 
-    public Task<bool> ResetProgressAsync(Guid setId, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<bool> ResetProgressAsync(Guid setId, Guid userId, CancellationToken cancellationToken = default)
     {
-      throw new NotImplementedException();
+      var set = await context.FlashcardSets.AsNoTracking()
+        .FirstOrDefaultAsync(s => s.Id == setId, cancellationToken)
+        ?? throw new NotFoundException($"Thẻ Flashcard với ID {setId} không tồn tại");
+      if (set.UserId != userId)
+      {
+        throw new ForbiddenException("Bạn không có quyền chỉnh sửa thẻ Flashcard này.");
+      }
+
+      var masterCards = await context.FlashcardItems.Where(item => item.SetId == setId && item.IsMastered).ToListAsync(cancellationToken);
+      if (masterCards.Count != 0)
+      {
+        foreach (var card in masterCards)
+        {
+          card.IsMastered = false;
+        }
+        await context.SaveChangesAsync(cancellationToken);
+      }
+      return true;
     }
 
-    public Task<FlashcardItemDetailDto> ToggleCardStatusAsync(Guid cardId, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<FlashcardItemDetailDto> ToggleCardStatusAsync(Guid cardId, Guid userId, CancellationToken cancellationToken = default)
     {
-      throw new NotImplementedException();
+      var card = await context.FlashcardItems.Include(item => item.Set).FirstOrDefaultAsync(item => item.Id == cardId, cancellationToken) ?? throw new NotFoundException($"Thẻ Flashcard với ID {cardId} không tồn tại");
+      if (card.Set.UserId != userId)
+      {
+        throw new ForbiddenException("Bạn không có quyền chỉnh sửa thẻ Flashcard này.");
+      }
+
+      card.IsMastered = !card.IsMastered;
+      await context.SaveChangesAsync(cancellationToken);
+      return new FlashcardItemDetailDto(
+        card.Id,
+        card.SetId,
+        card.Question,
+        card.Answer,
+        card.IsMastered,
+        card.CreatedAt);
     }
 
     public async Task<FlashcardItemDetailDto> UpdateCardStatusAsync(Guid cardId, Guid userId, UpdateFlashcardStatusRequest request, CancellationToken cancellationToken = default)
