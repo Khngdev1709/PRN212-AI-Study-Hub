@@ -10,7 +10,7 @@ using PRN212.AIStudyHub.Application.DTOs.AI;
 
 namespace PRN212.AIStudyHub.Infrastructure.AI
 {
-  public class GeminiAIService : IDeepAIService, IQuickAIService
+  public class GeminiAIService : IQuickAIService // IDeepAIService (Đã chuyển sang DeepSeekAIService)
   {
     private readonly Client _client;
     private readonly string _modelId;
@@ -67,6 +67,34 @@ Tài liệu:
       }
     }
 
+    private static string CleanJsonResponse(string text)
+    {
+      if (string.IsNullOrWhiteSpace(text))
+        return text;
+
+      var cleaned = text.Trim();
+      if (cleaned.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+      {
+        cleaned = cleaned[7..];
+      }
+      else if (cleaned.StartsWith("```"))
+      {
+        cleaned = cleaned[3..];
+      }
+
+      if (cleaned.EndsWith("```"))
+      {
+        cleaned = cleaned[..^3];
+      }
+
+      return cleaned.Trim();
+    }
+
+    // ==============================================================================================
+    // [CODE CŨ GEMINI] - ĐÃ CHUYỂN SANG DÙNG DEEPSEEK (DeepSeekAIService) CHO SUMMARY VÀ CHATBOX
+    // ==============================================================================================
+
+    /*
     public async Task<DocumentSummaryDto> SummarizeDocumentAsync(string documentContent)
     {
       var prompt = $@"
@@ -105,29 +133,6 @@ Tài liệu:
       {
         throw new InvalidOperationException($"Lỗi phân tích JSON kết quả tóm tắt từ Gemini: {ex.Message}. Nội dung AI trả về: {rawText}", ex);
       }
-    }
-
-    private static string CleanJsonResponse(string text)
-    {
-      if (string.IsNullOrWhiteSpace(text))
-        return text;
-
-      var cleaned = text.Trim();
-      if (cleaned.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-      {
-        cleaned = cleaned[7..];
-      }
-      else if (cleaned.StartsWith("```"))
-      {
-        cleaned = cleaned[3..];
-      }
-
-      if (cleaned.EndsWith("```"))
-      {
-        cleaned = cleaned[..^3];
-      }
-
-      return cleaned.Trim();
     }
 
     public async Task<string> ValidateIntentAsync(string userMessage)
@@ -216,5 +221,6 @@ QUY TẮC NGHIÊM NGẶT:
 
       return aiText ?? string.Empty;
     }
+    */
   }
 }

@@ -35,6 +35,7 @@ builder.Services.Configure<JwtSettings>(
 builder.Services.Configure<CloudinarySettings>(
   builder.Configuration.GetSection(CloudinarySettings.SectionName));
 builder.Services.Configure<GeminiOptions>(builder.Configuration.GetSection("GeminiAI"));
+builder.Services.Configure<DeepSeekOptions>(builder.Configuration.GetSection(DeepSeekOptions.SectionName));
 
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
@@ -46,7 +47,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IQuickAIService, GeminiAIService>();
-builder.Services.AddScoped<IDeepAIService, GeminiAIService>();
+builder.Services.AddScoped<IDeepAIService, DeepSeekAIService>();
 builder.Services.AddScoped<IDocumentTextExtractor, DocumentTextExtractor>();
 builder.Services.AddHttpClient();
 
