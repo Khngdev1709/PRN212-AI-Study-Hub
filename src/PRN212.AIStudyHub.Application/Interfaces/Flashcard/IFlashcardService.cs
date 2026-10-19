@@ -2,12 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using PRN212.AIStudyHub.Application.DTOs.AI;
+using PRN212.AIStudyHub.Application.DTOs.Flashcard;
+
+using static PRN212.AIStudyHub.Application.DTOs.Flashcard.FlashcardSetDto;
 
 namespace PRN212.AIStudyHub.Application.Interfaces.Flashcard
 {
   public interface IFlashcardService
   {
+    // ================================================
+    // DÙNG AI GENERATE FLASHCARD VÀ THEO DÕI TIẾN ĐỘ
+    // ================================================
+
     /// <summary>
     /// Lấy thông tin thống kê tiến độ học của một bộ Flashcard (Tổng số thẻ, Đã thuộc, Chưa thuộc, Tỷ lệ % hoàn thành).
     /// </summary>
@@ -67,5 +75,30 @@ namespace PRN212.AIStudyHub.Application.Interfaces.Flashcard
         Guid setId,
         Guid userId,
         CancellationToken cancellationToken = default);
+
+    // ================================================
+    // QUẢN LÝ BỘ THẺ (FLASHCARD SET)
+    // ================================================
+
+    Task<FlashcardSetResponseDto> CreateFlashcardsSetAsync(
+        CreateFlashcardSetRequest request,
+        Guid userId,
+        CancellationToken cancellationToken = default);
+    Task<List<FlashcardSetResponseDto>> GetMyFlashcardSetAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+    Task<FlashcardSetResponseDto> GetMyFlashcardSetByIdAsync(
+        Guid setId,
+        Guid userId,
+        CancellationToken cancellationToken = default);
+    Task<FlashcardSetResponseDto> UpdateSetAsync(
+        Guid setId,
+        Guid userid,
+        UpdateFlashcardSetRequest request,
+        CancellationToken cancellationToken = default);
+    Task<bool> DeleteFlashcardSetAsync(
+      Guid setId,
+      Guid userId,
+      CancellationToken cancellationToken = default);
   }
 }
