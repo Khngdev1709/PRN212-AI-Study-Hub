@@ -7,7 +7,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using PRN212.AIStudyHub.Application.DTOs.AI;
 using PRN212.AIStudyHub.Application.DTOs.Common;
+using PRN212.AIStudyHub.Application.DTOs.Flashcard;
 using PRN212.AIStudyHub.Application.Interfaces.Flashcard;
+using static PRN212.AIStudyHub.Application.DTOs.Flashcard.FlashcardSetDto;
 
 namespace PRN212.AIStudyHub.WebAPI.Controllers
 {
@@ -97,6 +99,84 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
     {
       var result = await flashcardService.ResetProgressAsync(setId, CurrentUserId, cancellationToken);
       return Ok(ApiResponse<bool>.SuccessResponse(result, "Đặt lại tiến độ học thành công."));
+    }
+
+    /// <summary>
+    /// Tạo mới một bộ thẻ Flashcard
+    /// </summary>
+    [HttpPost("sets")]
+    [ProducesResponseType(typeof(ApiResponse<FlashcardSetResponseDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> CreateSet(
+        [FromBody] CreateFlashcardSetRequest request,
+        CancellationToken cancellationToken)
+    {
+      var result = await flashcardService.CreateFlashcardsSetAsync(request, CurrentUserId, cancellationToken);
+      return StatusCode(StatusCodes.Status201Created,
+          ApiResponse<FlashcardSetResponseDto>.SuccessResponse(result, "Tạo bộ Flashcard thành công."));
+    }
+
+    /// <summary>
+    /// Lấy danh sách toàn bộ các bộ Flashcard của người dùng hiện tại (kèm % tiến độ hoàn thành)
+    /// </summary>
+    [HttpGet("sets")]
+    [ProducesResponseType(typeof(ApiResponse<List<FlashcardSetResponseDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMySets(CancellationToken cancellationToken)
+    {
+      var result = await flashcardService.GetMyFlashcardSetAsync(CurrentUserId, cancellationToken);
+      return Ok(ApiResponse<List<FlashcardSetResponseDto>>.SuccessResponse(result, "Lấy danh sách bộ Flashcard thành công."));
+    }
+
+    /// <summary>
+    /// Xem chi tiết thông tin 1 bộ Flashcard theo ID
+    /// </summary>
+    [HttpGet("sets/{setId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<FlashcardSetResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSetById(
+        [FromRoute] Guid setId,
+        CancellationToken cancellationToken)
+    {
+      var result = await flashcardService.GetMyFlashcardSetByIdAsync(setId, CurrentUserId, cancellationToken);
+      return Ok(ApiResponse<FlashcardSetResponseDto>.SuccessResponse(result, "Lấy thông tin bộ Flashcard thành công."));
+    }
+
+    /// <summary>
+    /// Cập nhật tên hoặc mô tả của bộ Flashcard
+    /// </summary>
+    [HttpPut("sets/{setId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<FlashcardSetResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateSet(
+        [FromRoute] Guid setId,
+        [FromBody] UpdateFlashcardSetRequest request,
+        CancellationToken cancellationToken)
+    {
+      var result = await flashcardService.UpdateSetAsync(setId, CurrentUserId, request, cancellationToken);
+      return Ok(ApiResponse<FlashcardSetResponseDto>.SuccessResponse(result, "Cập nhật bộ Flashcard thành công."));
+    }
+
+    /// <summary>
+    /// Xóa 1 bộ Flashcard (kèm toàn bộ câu hỏi bên trong)
+    /// </summary>
+    [HttpDelete("sets/{setId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteSet(
+        [FromRoute] Guid setId,
+        CancellationToken cancellationToken)
+    {
+      var result = await flashcardService.DeleteFlashcardSetAsync(setId, CurrentUserId, cancellationToken);
+      return Ok(ApiResponse<bool>.SuccessResponse(result, "Xóa bộ Flashcard thành công."));
     }
   }
 }
