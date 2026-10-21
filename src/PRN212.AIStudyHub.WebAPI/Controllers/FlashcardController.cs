@@ -9,6 +9,7 @@ using PRN212.AIStudyHub.Application.DTOs.AI;
 using PRN212.AIStudyHub.Application.DTOs.Common;
 using PRN212.AIStudyHub.Application.DTOs.Flashcard;
 using PRN212.AIStudyHub.Application.Interfaces.Flashcard;
+using static PRN212.AIStudyHub.Application.DTOs.Flashcard.FlashcardItemDto;
 using static PRN212.AIStudyHub.Application.DTOs.Flashcard.FlashcardSetDto;
 
 namespace PRN212.AIStudyHub.WebAPI.Controllers
@@ -177,6 +178,63 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
     {
       var result = await flashcardService.DeleteFlashcardSetAsync(setId, CurrentUserId, cancellationToken);
       return Ok(ApiResponse<bool>.SuccessResponse(result, "Xóa bộ Flashcard thành công."));
+    }
+
+    // =========================================================================
+    // QUẢN LÝ THẺ THỦ CÔNG (MANUAL ITEM MANAGEMENT)
+    // =========================================================================
+
+    /// <summary>
+    /// Thêm 1 thẻ Flashcard mới thủ công vào bộ thẻ
+    /// </summary>
+    [HttpPost("sets/{setId:guid}/items")]
+    [ProducesResponseType(typeof(ApiResponse<FlashcardItemDetailDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateCard(
+        [FromRoute] Guid setId,
+        [FromBody] CreateFlashcardItemRequest request,
+        CancellationToken cancellationToken)
+    {
+      var result = await flashcardService.CreateCardAsync(setId, CurrentUserId, request, cancellationToken);
+      return StatusCode(StatusCodes.Status201Created,
+          ApiResponse<FlashcardItemDetailDto>.SuccessResponse(result, "Thêm thẻ Flashcard thành công."));
+    }
+
+    /// <summary>
+    /// Chỉnh sửa nội dung câu hỏi và câu trả lời của 1 thẻ Flashcard
+    /// </summary>
+    [HttpPut("items/{cardId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<FlashcardItemDetailDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateCardContent(
+        [FromRoute] Guid cardId,
+        [FromBody] UpdateFlashcardItemRequest request,
+        CancellationToken cancellationToken)
+    {
+      var result = await flashcardService.UpdateCardContentAsync(cardId, CurrentUserId, request, cancellationToken);
+      return Ok(ApiResponse<FlashcardItemDetailDto>.SuccessResponse(result, "Cập nhật nội dung thẻ thành công."));
+    }
+
+    /// <summary>
+    /// Xóa 1 thẻ Flashcard
+    /// </summary>
+    [HttpDelete("items/{cardId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteCard(
+        [FromRoute] Guid cardId,
+        CancellationToken cancellationToken)
+    {
+      var result = await flashcardService.DeleteCardAsync(cardId, CurrentUserId, cancellationToken);
+      return Ok(ApiResponse<bool>.SuccessResponse(result, "Xóa thẻ Flashcard thành công."));
     }
   }
 }

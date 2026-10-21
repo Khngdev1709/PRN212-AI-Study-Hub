@@ -11,6 +11,7 @@ using PRN212.AIStudyHub.Application.Interfaces;
 using PRN212.AIStudyHub.Application.Interfaces.Flashcard;
 using PRN212.AIStudyHub.Domain.Entities;
 
+using static PRN212.AIStudyHub.Application.DTOs.Flashcard.FlashcardItemDto;
 using static PRN212.AIStudyHub.Application.DTOs.Flashcard.FlashcardSetDto;
 
 namespace PRN212.AIStudyHub.Application.Services
@@ -281,6 +282,163 @@ namespace PRN212.AIStudyHub.Application.Services
         isSetExist.Description,
         totalCards, masteredCards, percentage,
         isSetExist.CreatedAt);
+    }
+
+    // =========================================================================
+    // QUẢN LÝ THẺ THỦ CÔNG (MANUAL ITEM MANAGEMENT)
+    // =========================================================================
+
+    public async Task<FlashcardItemDetailDto> CreateCardAsync(
+        Guid setId,
+        Guid userId,
+        CreateFlashcardItemRequest request,
+        CancellationToken cancellationToken = default)
+    {
+      if (string.IsNullOrWhiteSpace(request.Question))
+      {
+        throw new BadRequestException("Câu hỏi không được để trống.");
+      }
+
+      if (string.IsNullOrWhiteSpace(request.Answer))
+      {
+        throw new BadRequestException("Câu trả lời không được để trống.");
+      }
+
+      var set = await context.FlashcardSets.AsNoTracking()
+          .FirstOrDefaultAsync(s => s.Id == setId, cancellationToken)
+          ?? throw new NotFoundException($"Bộ Flashcard với ID '{setId}' không tồn tại.");
+
+      if (set.UserId != userId)
+      {
+        throw new ForbiddenException("Bạn không có quyền thêm thẻ vào bộ Flashcard này.");
+      }
+
+      var newCard = new FlashcardItem
+      {
+        Id = Guid.NewGuid(),
+        SetId = setId,
+        Question = request.Question.Trim(),
+        Answer = request.Answer.Trim(),
+        IsMastered = false,
+        CreatedAt = DateTime.UtcNow
+      };
+
+      context.FlashcardItems.Add(newCard);
+      await context.SaveChangesAsync(cancellationToken);
+
+      return new FlashcardItemDetailDto(
+          newCard.Id,
+          newCard.SetId,
+          newCard.Question,
+          newCard.Answer,
+          newCard.IsMastered,
+          newCard.CreatedAt);
+    }
+
+    public async Task<FlashcardItemDetailDto> UpdateCardContentAsync(
+        Guid cardId,
+        Guid userId,
+        UpdateFlashcardItemRequest request,
+        CancellationToken cancellationToken = default)
+    {
+      if (string.IsNullOrWhiteSpace(request.Question))
+      {
+        throw new BadRequestException("Câu hỏi không được để trống.");
+      }
+
+      if (string.IsNullOrWhiteSpace(request.Answer))
+      {
+        throw new BadRequestException("Câu trả lời không được để trống.");
+      }
+
+      var card = await context.FlashcardItems
+          .Include(item => item.Set)
+          .FirstOrDefaultAsync(item => item.Id == cardId, cancellationToken)
+          ?? throw new NotFoundException($"Thẻ Flashcard với ID '{cardId}' không tồn tại.");
+
+      if (card.Set.UserId != userId)
+      {
+        throw new ForbiddenException("Bạn không có quyền chỉnh sửa thẻ Flashcard này.");
+      }
+
+      card.Question = request.Question.Trim();
+      card.Answer = request.Answer.Trim();
+
+      await context.SaveChangesAsync(cancellationToken);
+
+      return new FlashcardItemDetailDto(
+          card.Id,
+          card.SetId,
+          card.Question,
+          card.Answer,
+          card.IsMastered,
+          card.CreatedAt);
+    }
+
+    public async Task<bool> DeleteCardAsync(
+        Guid cardId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+      var card = await context.FlashcardItems
+          .Include(item => item.Set)
+          .FirstOrDefaultAsync(item => item.Id == cardId, cancellationToken)
+          ?? throw new NotFoundException($"Thẻ Flashcard với ID '{cardId}' không tồn tại.");
+
+      if (card.Set.UserId != userId)
+      {
+        throw new ForbiddenException("Bạn không có quyền xóa thẻ Flashcard này.");
+      }
+
+      context.FlashcardItems.Remove(card);
+      await context.SaveChangesAsync(cancellationToken);
+      return true;
+    }
+
+    // =========================================================================
+    // QUẢN LÝ THẺ DO AI SINH RA (AI GENERATED CARDS)
+    // =========================================================================
+
+    public async Task<List<FlashcardItemDetailDto>> AddGeneratedCardsAsync(
+        Guid setId,
+        Guid userId,
+        List<FlashcardDto> flashcards,
+        CancellationToken cancellationToken = default)
+    {
+      var set = await context.FlashcardSets.AsNoTracking()
+          .FirstOrDefaultAsync(s => s.Id == setId, cancellationToken)
+          ?? throw new NotFoundException($"Bộ Flashcard với ID '{setId}' không tồn tại.");
+
+      if (set.UserId != userId)
+      {
+        throw new ForbiddenException("Bạn không có quyền thêm thẻ vào bộ Flashcard này.");
+      }
+
+      if (flashcards == null || flashcards.Count == 0)
+      {
+        return new List<FlashcardItemDetailDto>();
+      }
+
+      var items = flashcards.Select(dto => new FlashcardItem
+      {
+        Id = Guid.NewGuid(),
+        SetId = setId,
+        Question = dto.Question.Trim(),
+        Answer = dto.Answer.Trim(),
+        IsMastered = false,
+        CreatedAt = DateTime.UtcNow
+      }).ToList();
+
+      context.FlashcardItems.AddRange(items);
+      await context.SaveChangesAsync(cancellationToken);
+
+      return items.Select(i => new FlashcardItemDetailDto(
+          i.Id,
+          i.SetId,
+          i.Question,
+          i.Answer,
+          i.IsMastered,
+          i.CreatedAt)).ToList();
     }
   }
 }

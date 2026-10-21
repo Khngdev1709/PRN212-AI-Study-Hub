@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using PRN212.AIStudyHub.Application.DTOs.AI;
 using PRN212.AIStudyHub.Application.DTOs.Flashcard;
 
+using static PRN212.AIStudyHub.Application.DTOs.Flashcard.FlashcardItemDto;
 using static PRN212.AIStudyHub.Application.DTOs.Flashcard.FlashcardSetDto;
 
 namespace PRN212.AIStudyHub.Application.Interfaces.Flashcard
@@ -97,8 +98,51 @@ namespace PRN212.AIStudyHub.Application.Interfaces.Flashcard
         UpdateFlashcardSetRequest request,
         CancellationToken cancellationToken = default);
     Task<bool> DeleteFlashcardSetAsync(
-      Guid setId,
-      Guid userId,
-      CancellationToken cancellationToken = default);
+        Guid setId,
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    // ================================================
+    // QUẢN LÝ THẺ THỦ CÔNG (MANUAL ITEM MANAGEMENT)
+    // ================================================
+
+    /// <summary>
+    /// Thêm 1 thẻ Flashcard mới thủ công vào bộ thẻ.
+    /// </summary>
+    Task<FlashcardItemDetailDto> CreateCardAsync(
+        Guid setId,
+        Guid userId,
+        CreateFlashcardItemRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cập nhật nội dung câu hỏi và câu trả lời của 1 thẻ Flashcard.
+    /// </summary>
+    Task<FlashcardItemDetailDto> UpdateCardContentAsync(
+        Guid cardId,
+        Guid userId,
+        UpdateFlashcardItemRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Xóa 1 thẻ Flashcard khỏi bộ thẻ.
+    /// </summary>
+    Task<bool> DeleteCardAsync(
+        Guid cardId,
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    // ================================================
+    // QUẢN LÝ THẺ DO AI SINH RA (AI GENERATED CARDS)
+    // ================================================
+
+    /// <summary>
+    /// Lưu danh sách các thẻ Flashcard do AI sinh ra vào bộ thẻ (có kiểm tra quyền sở hữu).
+    /// </summary>
+    Task<List<FlashcardItemDetailDto>> AddGeneratedCardsAsync(
+        Guid setId,
+        Guid userId,
+        List<FlashcardDto> flashcards,
+        CancellationToken cancellationToken = default);
   }
 }

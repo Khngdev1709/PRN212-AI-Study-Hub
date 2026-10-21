@@ -4,6 +4,7 @@ using PRN212.AIStudyHub.Application.DTOs.AI;
 using PRN212.AIStudyHub.Application.DTOs.Common;
 using PRN212.AIStudyHub.Application.Exceptions;
 using PRN212.AIStudyHub.Application.Interfaces.AI;
+using PRN212.AIStudyHub.Application.Interfaces.Flashcard;
 using PRN212.AIStudyHub.Domain.Entities;
 using PRN212.AIStudyHub.Infrastructure.Data;
 
@@ -14,21 +15,26 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
   {
     private readonly IQuickAIService _quickAIService;
     private readonly IDeepAIService _deepAIService;
+    private readonly IFlashcardService _flashcardService;
     private readonly AistudyHubDbContext _dbContext;
 
     public AIController(
       IQuickAIService quickAIService,
       IDeepAIService deepAIService,
+      IFlashcardService flashcardService,
       AistudyHubDbContext dbContext)
     {
       _quickAIService = quickAIService;
       _deepAIService = deepAIService;
+      _flashcardService = flashcardService;
       _dbContext = dbContext;
     }
 
     [HttpPost("flashcards")]
-    [ProducesResponseType(typeof(ApiResponse<List<FlashcardDto>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> CreateFlashcard([FromBody] CreateFlashcardsRequestDto request)
+    [ProducesResponseType(typeof(ApiResponse<List<FlashcardItemDetailDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> CreateFlashcard(
+        [FromBody] CreateFlashcardsRequestDto request,
+        CancellationToken cancellationToken)
     {
       if (string.IsNullOrWhiteSpace(request.DocumentContent))
         throw new BadRequestException("Nội dung tài liệu không được để trống.");
@@ -38,20 +44,13 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
 
       var dtoList = await _quickAIService.GenerateFlashcardsAsync(request.DocumentContent);
 
-      var items = dtoList.Select(dto => new FlashcardItem
-      {
-        Id = Guid.NewGuid(),
-        SetId = request.FlashcardSetId,
-        Question = dto.Question,
-        Answer = dto.Answer,
-        IsMastered = false,
-        CreatedAt = DateTime.UtcNow
-      }).ToList();
+      var items = await _flashcardService.AddGeneratedCardsAsync(
+          request.FlashcardSetId,
+          CurrentUserId,
+          dtoList,
+          cancellationToken);
 
-      _dbContext.FlashcardItem.AddRange(items);
-      await _dbContext.SaveChangesAsync();
-
-      return Ok(ApiResponse<List<FlashcardDto>>.SuccessResponse(dtoList, "Tạo Flashcard thành công."));
+      return Ok(ApiResponse<List<FlashcardItemDetailDto>>.SuccessResponse(items, "Tạo Flashcard thành công."));
     }
 
     [HttpPost("summarize")]
