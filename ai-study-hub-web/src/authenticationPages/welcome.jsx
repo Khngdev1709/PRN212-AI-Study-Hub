@@ -25,8 +25,8 @@ import {
   Check,
   LogOut,
 } from "lucide-react";
-import { useAuth } from "../api/useAuth";
-import "./welcome.css";
+import { useAuth } from "../hooks/useAuth";
+import "./Welcome.css";
 
 export default function Welcome() {
   const navigate = useNavigate();
@@ -115,11 +115,19 @@ export default function Welcome() {
 
     setModalLoading(true);
     try {
+      const trimmedName = regFullName.trim();
+      const nameParts = trimmedName.split(/\s+/);
+      const firstName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : nameParts[0];
+      const lastName = nameParts.length > 1 ? nameParts[0] : "Student";
+
       const res = await authRegister({
-        fullName: regFullName.trim(),
+        fullName: trimmedName,
+        firstName,
+        lastName,
         email: regEmail.trim(),
         password: regPassword,
         confirmPassword: regConfirmPassword,
+        role: "Student",
       });
 
       if (res.success) {
