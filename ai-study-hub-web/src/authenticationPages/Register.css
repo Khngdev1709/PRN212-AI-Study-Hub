@@ -1,0 +1,110 @@
+/* =========================================================================
+   Register.css — Styles & Animations for Register / Create Account Screen
+   ========================================================================= */
+
+/* ── Smooth Fade In Animation ── */
+@keyframes registerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.register-fade-in {
+  animation: registerFadeIn 0.25s ease-out forwards;
+}
+
+/* ── Password Strength Bar Transitions ── */
+.strength-bar {
+  height: 0.375rem; /* 6px */
+  border-radius: 9999px;
+  flex: 1 1 0%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.strength-bar-inactive {
+  background-color: #e2e8f0; /* slate-200 */
+}
+
+.strength-bar-weak {
+  background-color: #f59e0b; /* amber-500 */
+}
+
+.strength-bar-medium {
+  background-color: #2563eb; /* blue-600 */
+}
+
+.strength-bar-strong {
+  background-color: #10b981; /* emerald-500 */
+}
+
+/* ── Input Focus Ring & Smooth Transitions ── */
+.register-input {
+  width: 100%;
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+  padding-left: 2.5rem;
+  padding-right: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #1e293b;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+}
+
+.register-input::placeholder {
+  color: #94a3b8;
+}
+
+.register-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.register-input-error {
+  border-color: #f87171 !important;
+}
+
+.register-input-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+/* ── Register Button Effect ── */
+.register-btn-primary {
+  width: 100%;
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.register-btn-primary:hover:not(:disabled) {
+  background-color: #1d4ed8;
+  box-shadow: 0 6px 20px 0 rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+
+.register-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.register-btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
