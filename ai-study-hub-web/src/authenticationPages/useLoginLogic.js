@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../api/useAuth";
@@ -13,16 +13,20 @@ export function useLoginLogic() {
   const { login, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
+  // Đọc identifier đã ghi nhớ (nếu có)
+  const savedIdentifier = typeof window !== "undefined" ? localStorage.getItem("rememberIdentifier") || "" : "";
+
   // Khởi tạo React Hook Form
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     defaultValues: {
-      identifier: "",
+      identifier: savedIdentifier,
       password: "",
-      rememberMe: false,
+      rememberMe: Boolean(savedIdentifier),
     },
     mode: "onTouched",
   });
@@ -56,11 +60,11 @@ export function useLoginLogic() {
         // Chuyển hướng sang trang chính sau khi đăng nhập thành công
         navigate("/");
       } else {
-        setServerError(result.message || "Tên đăng nhập hoặc mật khẩu không chính xác.");
+        setServerError(result.message || "Invalid email/student ID or password.");
       }
     } catch (err) {
       console.error("Lỗi khi đăng nhập:", err);
-      setServerError("Không thể kết nối tới máy chủ. Vui lòng kiểm tra lại kết nối mạng!");
+      setServerError("Unable to connect to server. Please check your internet connection.");
     }
   };
 
@@ -68,7 +72,6 @@ export function useLoginLogic() {
    * Xử lý đăng nhập bằng Google
    */
   const handleGoogleLogin = () => {
-    // Luồng OAuth Google (sẽ kích hoạt endpoint /api/v1/auth/google-login)
     console.log("Kích hoạt luồng Google OAuth...");
     alert("Chức năng đăng nhập Google đang được tích hợp!");
   };
