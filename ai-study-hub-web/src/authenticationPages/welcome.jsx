@@ -23,14 +23,13 @@ import {
   Loader2,
   AlertCircle,
   Check,
-  LogOut,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import "./Welcome.css";
 
 export default function Welcome() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, login, register: authRegister, logout, isLoading: authLoading } = useAuth();
+  const { login, register: authRegister, isLoading: authLoading } = useAuth();
 
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -82,7 +81,7 @@ export default function Welcome() {
         setModalSuccess("Login successful! Redirecting...");
         setTimeout(() => {
           setAuthModalOpen(false);
-          navigate("/login");
+          navigate("/dashboard");
         }, 800);
       } else {
         setModalError(res.message || "Invalid credentials. Please try again.");
@@ -186,42 +185,20 @@ export default function Welcome() {
             </a>
           </nav>
 
-          {/* Right Actions */}
+          {/* Right Actions — static public buttons (no auth state) */}
           <div className="hidden md:flex items-center gap-3">
-            {isAuthenticated ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200/80 text-xs text-slate-700">
-                  <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">
-                    {user?.fullName ? user.fullName[0].toUpperCase() : "U"}
-                  </div>
-                  <span className="font-medium max-w-[120px] truncate">{user?.fullName || user?.email || "Student"}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="flex items-center gap-1 text-slate-500 hover:text-red-600 text-xs font-medium px-2 py-1.5 rounded-lg transition-colors cursor-pointer"
-                  title="Logout"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Logout</span>
-                </button>
-              </div>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="text-slate-700 hover:text-blue-600 font-medium text-sm px-4 py-2 transition-colors cursor-pointer"
-                >
-                  Log In
-                </Link>
-                <Link
-                  to="/register"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-5 py-2.5 rounded-full shadow-sm hover:shadow-md transition-all cursor-pointer"
-                >
-                  Register
-                </Link>
-              </>
-            )}
+            <Link
+              to="/login"
+              className="text-slate-700 hover:text-blue-600 font-medium text-sm px-4 py-2 transition-colors cursor-pointer"
+            >
+              Log In
+            </Link>
+            <Link
+              to="/register"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-5 py-2 rounded-full shadow-sm hover:shadow-md transition-all cursor-pointer"
+            >
+              Register
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}

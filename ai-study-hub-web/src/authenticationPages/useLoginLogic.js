@@ -57,8 +57,8 @@ export function useLoginLogic() {
           localStorage.removeItem("rememberIdentifier");
         }
 
-        // Chuyển hướng sang trang chính sau khi đăng nhập thành công
-        navigate("/");
+        // Chuyển hướng sang trang Dashboard sau khi đăng nhập thành công
+        navigate("/dashboard");
       } else {
         setServerError(result.message || "Invalid email/student ID or password.");
       }
