@@ -1,0 +1,41 @@
+<svg width="400" height="280" viewBox="0 0 400 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cloudGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#6366F1" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F8FAFC"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background decorative floating circles -->
+  <circle cx="280" cy="140" r="110" fill="url(#cloudGrad)"/>
+  <circle cx="340" cy="90" r="45" fill="#3B82F6" fill-opacity="0.08"/>
+
+  <!-- Main Floating Book / Document Card -->
+  <g transform="translate(180, 50) rotate(-6)">
+    <rect width="160" height="200" rx="16" fill="url(#cardGrad)" stroke="#E2E8F0" stroke-width="2"/>
+    <rect x="20" y="24" width="80" height="8" rx="4" fill="#3B82F6"/>
+    <rect x="20" y="44" width="120" height="6" rx="3" fill="#E2E8F0"/>
+    <rect x="20" y="58" width="105" height="6" rx="3" fill="#E2E8F0"/>
+    <rect x="20" y="72" width="115" height="6" rx="3" fill="#E2E8F0"/>
+    <rect x="20" y="86" width="90" height="6" rx="3" fill="#E2E8F0"/>
+    
+    <!-- Sparkle AI Icon inside card -->
+    <circle cx="80" cy="140" r="26" fill="#EFF6FF"/>
+    <path d="M80 126L83 135L92 138L83 141L80 150L77 141L68 138L77 135L80 126Z" fill="#3B82F6"/>
+    <path d="M92 122L93.5 126.5L98 128L93.5 129.5L92 134L90.5 129.5L86 128L90.5 126.5L92 122Z" fill="#818CF8"/>
+  </g>
+
+  <!-- Front Floating Mini Badge -->
+  <g transform="translate(130, 160)">
+    <rect width="130" height="64" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="drop-shadow(0 10px 15px rgba(0,0,0,0.06))"/>
+    <rect x="14" y="16" width="32" height="32" rx="8" fill="#DBEAFE"/>
+    <!-- Checkmark / Cap -->
+    <path d="M24 32L28 36L36 28" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="54" y="20" width="60" height="8" rx="4" fill="#1E293B"/>
+    <rect x="54" y="34" width="40" height="6" rx="3" fill="#94A3B8"/>
+  </g>
+</svg>
