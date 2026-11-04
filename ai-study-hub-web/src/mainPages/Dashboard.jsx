@@ -124,7 +124,7 @@ export default function Dashboard() {
       icon: FolderPlus,
       color: "text-slate-600",
       bgColor: "bg-slate-100",
-      onClick: () => navigate("/courses"),
+      onClick: () => navigate("/documents?manageSubjects=1"),
     },
     {
       title: "Hỏi Trợ lý AI",
@@ -197,7 +197,7 @@ export default function Dashboard() {
 
         {/* Card 2: Môn học (Distinct subject IDs for this user) */}
         <div
-          onClick={() => navigate("/courses")}
+          onClick={() => navigate("/documents")}
           className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-xs flex items-center justify-between hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer group select-none"
         >
           <div className="flex items-center gap-3.5">
