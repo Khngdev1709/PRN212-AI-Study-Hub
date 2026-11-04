@@ -5,6 +5,8 @@ import Register from "./authenticationPages/Register";
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./mainPages/Dashboard";
+import SubjectsPage from "./mainPages/DocumentPage/SubjectsPage";
+import SubjectDocumentsPage from "./mainPages/DocumentPage/SubjectDocumentsPage";
 
 function App() {
   return (
@@ -19,9 +21,10 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            {/* Placeholder routes matching sidebar navigation */}
-            <Route path="/documents" element={<Dashboard />} />
-            <Route path="/courses" element={<Dashboard />} />
+            <Route path="/subjects" element={<SubjectsPage />} />
+            <Route path="/subjects/:subjectId/documents" element={<SubjectDocumentsPage />} />
+            <Route path="/documents" element={<SubjectsPage />} />
+            <Route path="/courses" element={<Navigate to="/subjects" replace />} />
             <Route path="/ai-assistant" element={<Dashboard />} />
             <Route path="/shared" element={<Dashboard />} />
             <Route path="/settings" element={<Dashboard />} />
