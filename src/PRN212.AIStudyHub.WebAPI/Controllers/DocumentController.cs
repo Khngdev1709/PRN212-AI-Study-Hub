@@ -13,7 +13,7 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
   [Route("api/v1/documents")]
   public class DocumentController(IDocumentService documentService) : BaseApiController
   {
-    private static readonly string[] AllowedExtensions = [".pdf", ".docx", ".doc", ".pptx", ".txt", ".md"];
+    private static readonly string[] AllowedExtensions = [".pdf", ".docx", ".doc", ".pptx", ".txt", ".md", ".png", ".jpg", ".jpeg"];
     private const long MaxFileSize = 25 * 1024 * 1024; // 25MB
 
     /// <summary>
