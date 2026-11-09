@@ -6,7 +6,6 @@ import {
   Bell,
   Home,
   FileText,
-  Book,
   Sparkles,
   Users,
   Settings,
@@ -23,8 +22,7 @@ import { useAuth } from "../hooks/useAuth";
  */
 const NAV_ITEMS = [
   { label: "Tổng quan", icon: Home, to: "/dashboard" },
-  { label: "Tài liệu của tôi", icon: FileText, to: "/documents" },
-  { label: "Môn học", icon: Book, to: "/courses" },
+  { label: "Tài liệu của tôi", icon: FileText, to: "/subjects" },
   { label: "Trợ lý AI", icon: Sparkles, to: "/ai-assistant" },
   { label: "Đã chia sẻ", icon: Users, to: "/shared" },
 ];
@@ -88,13 +86,18 @@ export default function MainLayout() {
       <NavLink
         key={item.to}
         to={item.to}
-        className={({ isActive }) =>
-          `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm transition-all duration-150 select-none ${
-            isActive
+        className={({ isActive }) => {
+          const isDocActive =
+            item.to === "/subjects" &&
+            (location.pathname.startsWith("/subjects") ||
+              location.pathname.startsWith("/documents"));
+          const active = isActive || isDocActive;
+          return `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm transition-all duration-150 select-none ${
+            active
               ? "bg-blue-50 text-blue-700 font-semibold shadow-xs"
               : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium"
-          }`
-        }
+          }`;
+        }}
       >
         <Icon className="w-5 h-5 shrink-0" />
         <span className="truncate">{item.label}</span>

@@ -51,10 +51,6 @@ function getFileIconProps(filename = "", extension = "") {
     case "txt":
     case "md":
       return { Icon: File, bg: "#f8fafc", color: "#64748b" };
-    case "png":
-    case "jpg":
-    case "jpeg":
-      return { Icon: ImageIcon, bg: "#fdf4ff", color: "#c026d3" };
     default:
       return { Icon: File, bg: "#f5f3ff", color: "#8b5cf6" };
   }
@@ -119,14 +115,6 @@ export default function Documents() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   // Manage subjects modal visibility
   const [manageSubjectsOpen, setManageSubjectsOpen] = useState(false);
-  // Preview modal visibility & active document
-  const [previewModalOpen, setPreviewModalOpen] = useState(false);
-  const [previewDoc, setPreviewDoc] = useState(null);
-
-  const handleOpenPreview = (documentItem) => {
-    setPreviewDoc(documentItem);
-    setPreviewModalOpen(true);
-  };
 
   // Auto-open manage subjects modal if ?manageSubjects=1
   useEffect(() => {
@@ -446,12 +434,7 @@ export default function Documents() {
 
                 {/* Card Body */}
                 <div className={styles.cardBody}>
-                  <p
-                    className={styles.docTitle}
-                    title={`${title} (Bấm để xem trước)`}
-                    onClick={() => handleOpenPreview(doc)}
-                    style={{ cursor: "pointer" }}
-                  >
+                  <p className={styles.docTitle} title={title}>
                     {title}
                   </p>
                   <div className={styles.cardMeta}>

@@ -125,6 +125,8 @@ export default function SubjectDocumentsPage() {
     setPreviewModalOpen(true);
   };
 
+  const [deletingId, setDeletingId] = useState(null);
+
   // ── Fetch Subject info & Documents for this subject ───────────────────────
   const fetchSubjectAndDocs = useCallback(async () => {
     if (!subjectId) return;
@@ -411,6 +413,7 @@ export default function SubjectDocumentsPage() {
                     title={`${title} (Bấm để xem trước)`}
                     onClick={() => handleOpenPreview(doc)}
                   >
+                  <p className={styles.docTitle} title={title}>
                     {title}
                   </p>
                   <div className={styles.cardMeta}>
