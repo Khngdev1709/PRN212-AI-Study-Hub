@@ -290,6 +290,7 @@ export default function UploadDocumentModal({
                 <input
                   ref={fileInputRef}
                   type="file"
+                  accept=".pdf,.doc,.docx,.pptx,.txt,.md,.png,.jpg,.jpeg"
                   accept=".pdf,.doc,.docx,.pptx,.txt,.md"
                   onChange={handleFileChange}
                   style={{ display: "none" }}
@@ -301,6 +302,7 @@ export default function UploadDocumentModal({
                       <Upload size={24} />
                     </div>
                     <p className={styles.dropZoneTitle}>
+                      Kéo &amp; thả file vào đây (.pdf, .docx, .png, .jpg, .txt, .md)
                       Kéo &amp; thả file vào đây (.pdf, .docx)
                     </p>
                     <p className={styles.dropZoneSubtitle}>

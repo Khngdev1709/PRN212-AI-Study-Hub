@@ -10,6 +10,8 @@ import {
   Presentation,
   Download,
   Trash2,
+  Eye,
+  Image as ImageIcon,
   Sparkles,
   BookOpen,
   MessageSquare,
@@ -25,6 +27,7 @@ import {
 import axiosClient from "../../api/axiosClient";
 import styles from "./SubjectDocumentsPage.module.css";
 import UploadDocumentModal from "./UploadDocumentModal";
+import PreviewDocumentModal from "./PreviewDocumentModal";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -48,6 +51,10 @@ function getFileIconProps(filename = "", extension = "") {
     case "txt":
     case "md":
       return { Icon: File, bg: "#f8fafc", color: "#64748b" };
+    case "png":
+    case "jpg":
+    case "jpeg":
+      return { Icon: ImageIcon, bg: "#fdf4ff", color: "#c026d3" };
     default:
       return { Icon: File, bg: "#f5f3ff", color: "#8b5cf6" };
   }
@@ -109,6 +116,15 @@ export default function SubjectDocumentsPage() {
 
   // Modal & Actions
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleOpenPreview = (documentItem) => {
+    setPreviewDoc(documentItem);
+    setPreviewModalOpen(true);
+  };
+
   const [deletingId, setDeletingId] = useState(null);
 
   // ── Fetch Subject info & Documents for this subject ───────────────────────
@@ -392,6 +408,11 @@ export default function SubjectDocumentsPage() {
 
                 {/* Card Body */}
                 <div className={styles.cardBody}>
+                  <p
+                    className={styles.docTitle}
+                    title={`${title} (Bấm để xem trước)`}
+                    onClick={() => handleOpenPreview(doc)}
+                  >
                   <p className={styles.docTitle} title={title}>
                     {title}
                   </p>
@@ -455,6 +476,14 @@ export default function SubjectDocumentsPage() {
                   <div className={styles.utilActions}>
                     <button
                       type="button"
+                      className={`${styles.utilActionBtn} ${styles.previewBtn}`}
+                      onClick={() => handleOpenPreview(doc)}
+                      title="Xem trước tài liệu"
+                    >
+                      <Eye size={15} />
+                    </button>
+                    <button
+                      type="button"
                       className={styles.utilActionBtn}
                       onClick={() => handleDownload(id, filename)}
                       title="Tải xuống"
@@ -491,6 +520,13 @@ export default function SubjectDocumentsPage() {
         onClose={() => setUploadModalOpen(false)}
         onSuccess={fetchSubjectAndDocs}
         defaultSubjectId={subjectId}
+      />
+
+      {/* ── Preview Document Modal ─────────────────────────────────── */}
+      <PreviewDocumentModal
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        document={previewDoc}
       />
     </div>
   );

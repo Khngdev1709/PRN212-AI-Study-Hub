@@ -412,6 +412,12 @@
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  cursor: pointer;
+  transition: color 0.18s ease;
+}
+
+.docTitle:hover {
+  color: #2563eb;
 }
 
 .cardMeta {
@@ -488,6 +494,11 @@
   background: #f1f5f9;
   color: #475569;
   transform: scale(1.1);
+}
+
+.previewBtn:hover {
+  background: #eff6ff !important;
+  color: #2563eb !important;
 }
 
 .deleteBtn:hover {

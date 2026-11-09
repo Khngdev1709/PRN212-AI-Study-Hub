@@ -9,6 +9,8 @@ import {
   Presentation,
   Download,
   Trash2,
+  Eye,
+  Image as ImageIcon,
   Sparkles,
   BookOpen,
   MessageSquare,
@@ -25,6 +27,7 @@ import axiosClient from "../../api/axiosClient";
 import styles from "./Documents.module.css";
 import UploadDocumentModal from "./UploadDocumentModal";
 import ManageSubjectsModal from "./ManageSubjectsModal";
+import PreviewDocumentModal from "./PreviewDocumentModal";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -488,6 +491,14 @@ export default function Documents() {
                     <button
                       type="button"
                       className={styles.utilActionBtn}
+                      onClick={() => handleOpenPreview(doc)}
+                      title="Xem trước tài liệu"
+                    >
+                      <Eye size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.utilActionBtn}
                       onClick={() => handleDownload(id, filename)}
                       title="Tải xuống"
                     >
@@ -527,6 +538,13 @@ export default function Documents() {
         isOpen={manageSubjectsOpen}
         onClose={() => setManageSubjectsOpen(false)}
         onSubjectsUpdated={fetchSubjects}
+      />
+
+      {/* ── Preview Document Modal ─────────────────────────────────── */}
+      <PreviewDocumentModal
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        document={previewDoc}
       />
 
     </div>
