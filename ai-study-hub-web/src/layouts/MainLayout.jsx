@@ -315,7 +315,14 @@ export default function MainLayout() {
         </header>
 
         {/* Main Content Area: Scrollable with dynamic page content */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <main
+          className={`flex-1 min-w-0 ${
+            location.pathname.startsWith("/ai-assistant") ||
+            location.pathname.startsWith("/chat")
+              ? "overflow-hidden p-0 flex flex-col"
+              : "overflow-y-auto p-6 md:p-8"
+          }`}
+        >
           <Outlet />
         </main>
 

@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./mainPages/Dashboard";
 import SubjectsPage from "./mainPages/DocumentPage/SubjectsPage";
 import SubjectDocumentsPage from "./mainPages/DocumentPage/SubjectDocumentsPage";
+import ChatboxPage from "./mainPages/ChatboxPage/ChatboxPage";
 
 function App() {
   return (
@@ -25,7 +26,9 @@ function App() {
             <Route path="/subjects/:subjectId/documents" element={<SubjectDocumentsPage />} />
             <Route path="/documents" element={<SubjectsPage />} />
             <Route path="/courses" element={<Navigate to="/subjects" replace />} />
-            <Route path="/ai-assistant" element={<Dashboard />} />
+            <Route path="/ai-assistant" element={<ChatboxPage />} />
+            <Route path="/chat" element={<ChatboxPage />} />
+            <Route path="/chat/:sessionId" element={<ChatboxPage />} />
             <Route path="/shared" element={<Dashboard />} />
             <Route path="/settings" element={<Dashboard />} />
             <Route path="/profile" element={<Dashboard />} />

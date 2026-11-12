@@ -9,5 +9,12 @@ namespace PRN212.AIStudyHub.Application.Interfaces
     Task<SubjectDto> CreateSubject(
       CreateSubjectRequest request,
       CancellationToken cancellationToken = default);
+    Task<SubjectDto> UpdateSubject(
+      Guid id,
+      UpdateSubjectRequest request,
+      CancellationToken cancellationToken = default);
+    Task DeleteSubject(
+      Guid id,
+      CancellationToken cancellationToken = default);
   }
 }

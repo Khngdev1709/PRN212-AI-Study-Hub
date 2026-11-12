@@ -6,9 +6,11 @@ namespace PRN212.AIStudyHub.Infrastructure.AI
 {
   public class GeminiOptions
   {
-    public const string SectionName = "Gemini";
+    public const string SectionName = "GeminiAI";
     public string ApiKey { get; set; } = string.Empty;
-    public string FlashModel { get; set; } = string.Empty;
+    public string FlashLiteModel { get; set; } = "gemini-3.1-flash-lite";
+    public string FlashModel { get; set; } = "gemini-3.8-flash";
+    public string FallbackModel { get; set; } = "gemini-3.8-flash";
     public string ProModel { get; set; } = string.Empty;
   }
 }
