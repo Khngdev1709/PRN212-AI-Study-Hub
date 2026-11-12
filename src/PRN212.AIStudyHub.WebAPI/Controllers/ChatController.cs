@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PRN212.AIStudyHub.Application.DTOs.AI;
@@ -10,7 +11,9 @@ using PRN212.AIStudyHub.Infrastructure.Data;
 
 namespace PRN212.AIStudyHub.WebAPI.Controllers
 {
+    [Authorize]
     [Route("api/chat")]
+    [Route("api/v1/chat")]
     [Tags("AI")]
     public class ChatController : BaseApiController
     {
@@ -23,6 +26,126 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
             _dbContext = dbContext;
         }
 
+        /// <summary>
+        /// Lấy danh sách các phiên chat của người dùng hiện tại
+        /// </summary>
+        [HttpGet("sessions")]
+        public async Task<IActionResult> GetUserSessions()
+        {
+            var sessions = await _dbContext.ChatSession
+                .Where(s => s.UserId == CurrentUserId)
+                .OrderByDescending(s => s.UpdatedAt ?? s.CreatedAt)
+                .Select(s => new
+                {
+                    s.Id,
+                    s.Title,
+                    s.CreatedAt,
+                    s.UpdatedAt,
+                    MessageCount = s.ChatMessage.Count,
+                    Documents = s.ChatSessionDocument.Select(csd => new
+                    {
+                        csd.Document.Id,
+                        csd.Document.Title,
+                        csd.Document.FileName,
+                        csd.Document.FileSize,
+                        csd.Document.FileExtension
+                    }).ToList()
+                })
+                .ToListAsync();
+
+            return Ok(Application.DTOs.Common.ApiResponse<object>.SuccessResponse(sessions, "Fetched chat sessions successfully."));
+        }
+
+        /// <summary>
+        /// Lấy chi tiết phiên chat và các tài liệu đính kèm
+        /// </summary>
+        [HttpGet("session/{sessionId}")]
+        public async Task<IActionResult> GetSessionDetails(Guid sessionId)
+        {
+            var session = await _dbContext.ChatSession
+                .Include(s => s.ChatSessionDocument)
+                .ThenInclude(csd => csd.Document)
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == CurrentUserId);
+
+            if (session == null)
+            {
+                return NotFound("Session not found or unauthorized.");
+            }
+
+            var result = new
+            {
+                session.Id,
+                session.Title,
+                session.CreatedAt,
+                session.UpdatedAt,
+                Documents = session.ChatSessionDocument.Select(csd => new
+                {
+                    csd.Document.Id,
+                    csd.Document.Title,
+                    csd.Document.FileName,
+                    csd.Document.FileSize,
+                    csd.Document.FileExtension
+                }).ToList()
+            };
+
+            return Ok(Application.DTOs.Common.ApiResponse<object>.SuccessResponse(result, "Fetched session details successfully."));
+        }
+
+        /// <summary>
+        /// Lấy toàn bộ tin nhắn trong một phiên chat
+        /// </summary>
+        [HttpGet("session/{sessionId}/messages")]
+        public async Task<IActionResult> GetSessionMessages(Guid sessionId)
+        {
+            var session = await _dbContext.ChatSession
+                .Include(s => s.ChatSessionDocument)
+                .ThenInclude(csd => csd.Document)
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == CurrentUserId);
+
+            if (session == null)
+            {
+                return NotFound("Session not found or unauthorized.");
+            }
+
+            var messages = await _dbContext.ChatMessage
+                .Where(m => m.SessionId == sessionId)
+                .OrderBy(m => m.SentAt)
+                .Select(m => new
+                {
+                    m.Id,
+                    m.SessionId,
+                    m.Sender,
+                    m.Content,
+                    m.SentAt
+                })
+                .ToListAsync();
+
+            var documents = session.ChatSessionDocument.Select(csd => new
+            {
+                csd.Document.Id,
+                csd.Document.Title,
+                csd.Document.FileName,
+                csd.Document.FileSize,
+                csd.Document.FileExtension
+            }).ToList();
+
+            return Ok(Application.DTOs.Common.ApiResponse<object>.SuccessResponse(new
+            {
+                Session = new
+                {
+                    session.Id,
+                    session.Title,
+                    session.CreatedAt,
+                    session.UpdatedAt,
+                    Documents = documents
+                },
+                Messages = messages
+            }, "Fetched session messages successfully."));
+        }
+
+        /// <summary>
+        /// Tạo phiên chat mới
+        /// </summary>
         [HttpPost("session")]
         public async Task<IActionResult> CreateSession([FromBody] CreateChatSessionDto request)
         {
@@ -36,7 +159,7 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
             {
                 Id = sessionId,
                 UserId = CurrentUserId,
-                Title = request.Title,
+                Title = request.Title.Trim(),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -60,6 +183,58 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
             return Ok(Application.DTOs.Common.ApiResponse<Guid>.SuccessResponse(sessionId, "Session created successfully."));
         }
 
+        /// <summary>
+        /// Đổi tên phiên chat
+        /// </summary>
+        [HttpPut("session/{sessionId}")]
+        public async Task<IActionResult> RenameSession(Guid sessionId, [FromBody] RenameChatSessionDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request?.Title))
+            {
+                return BadRequest("Title cannot be empty.");
+            }
+
+            var session = await _dbContext.ChatSession.FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == CurrentUserId);
+            if (session == null)
+            {
+                return NotFound("Session not found or unauthorized.");
+            }
+
+            session.Title = request.Title.Trim();
+            session.UpdatedAt = DateTime.UtcNow;
+            await _dbContext.SaveChangesAsync();
+
+            return Ok(Application.DTOs.Common.ApiResponse<bool>.SuccessResponse(true, "Session renamed successfully."));
+        }
+
+        /// <summary>
+        /// Xóa phiên chat
+        /// </summary>
+        [HttpDelete("session/{sessionId}")]
+        public async Task<IActionResult> DeleteSession(Guid sessionId)
+        {
+            var session = await _dbContext.ChatSession
+                .Include(s => s.ChatMessage)
+                .Include(s => s.ChatSessionDocument)
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == CurrentUserId);
+
+            if (session == null)
+            {
+                return NotFound("Session not found or unauthorized.");
+            }
+
+            _dbContext.ChatMessage.RemoveRange(session.ChatMessage);
+            _dbContext.ChatSessionDocument.RemoveRange(session.ChatSessionDocument);
+            _dbContext.ChatSession.Remove(session);
+
+            await _dbContext.SaveChangesAsync();
+
+            return Ok(Application.DTOs.Common.ApiResponse<bool>.SuccessResponse(true, "Session deleted successfully."));
+        }
+
+        /// <summary>
+        /// Cập nhật danh sách tài liệu gắn với phiên chat
+        /// </summary>
         [HttpPost("session/{sessionId}/documents")]
         public async Task<IActionResult> UpdateSessionDocuments(Guid sessionId, [FromBody] UpdateSessionDocumentsDto request)
         {
@@ -89,11 +264,15 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
                 }
             }
 
+            session.UpdatedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();
 
             return Ok(Application.DTOs.Common.ApiResponse<bool>.SuccessResponse(true, "Session documents updated successfully."));
         }
 
+        /// <summary>
+        /// Gửi câu hỏi cho AI (luồng RAG 2 bước)
+        /// </summary>
         [HttpPost("query")]
         public async Task<IActionResult> Query([FromBody] ChatQueryDto request)
         {
@@ -116,7 +295,7 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"AI Filter error: {ex.Message}");
+                return StatusCode(500, Application.DTOs.Common.ApiResponse.FailureResponse($"AI Filter error: {ex.Message}"));
             }
 
             // Save user message (must save whether valid or not)
@@ -129,6 +308,7 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
                 SentAt = DateTime.UtcNow
             };
             _dbContext.ChatMessage.Add(userMsg);
+            session.UpdatedAt = DateTime.UtcNow;
 
             // If invalid intent, save rejection and return early
             if (!validationResult.Equals("VALID", StringComparison.OrdinalIgnoreCase))
@@ -166,11 +346,20 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
             var contextChunks = new System.Text.StringBuilder();
             foreach (var doc in documents)
             {
-                if (doc.Document.DocumentSummary != null)
+                if (doc.Document != null)
                 {
-                    contextChunks.AppendLine($"[Document: {doc.Document.Title}]");
-                    contextChunks.AppendLine(doc.Document.DocumentSummary.SummaryContent);
-                    contextChunks.AppendLine(doc.Document.DocumentSummary.KeyTakeaways);
+                    contextChunks.AppendLine($"[Document: {doc.Document.Title} ({doc.Document.FileName})]");
+                    if (doc.Document.DocumentSummary != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(doc.Document.DocumentSummary.SummaryContent))
+                        {
+                            contextChunks.AppendLine(doc.Document.DocumentSummary.SummaryContent);
+                        }
+                        if (!string.IsNullOrWhiteSpace(doc.Document.DocumentSummary.KeyTakeaways))
+                        {
+                            contextChunks.AppendLine(doc.Document.DocumentSummary.KeyTakeaways);
+                        }
+                    }
                     contextChunks.AppendLine();
                 }
             }
@@ -185,7 +374,7 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"AI Service error: {ex.Message}");
+                return StatusCode(500, Application.DTOs.Common.ApiResponse.FailureResponse($"AI Service error: {ex.Message}"));
             }
 
             // Save AI response
@@ -198,6 +387,7 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
                 SentAt = DateTime.UtcNow
             };
             _dbContext.ChatMessage.Add(aiMsg);
+            session.UpdatedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();
 
             return Ok(Application.DTOs.Common.ApiResponse<string>.SuccessResponse(aiResponseText, "Query successful"));

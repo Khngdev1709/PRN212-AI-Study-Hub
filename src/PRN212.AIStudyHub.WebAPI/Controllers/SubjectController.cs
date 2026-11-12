@@ -41,6 +41,38 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
     }
 
     /// <summary>
+    /// Cập nhật thông tin môn học
+    /// </summary>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<SubjectDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateSubject(
+      [FromRoute] Guid id,
+      [FromBody] UpdateSubjectRequest request,
+      CancellationToken cancellationToken)
+    {
+      var result = await subjectService.UpdateSubject(id, request, cancellationToken);
+      return Ok(ApiResponse<SubjectDto>.SuccessResponse(result, "Subject updated successfully."));
+    }
+
+    /// <summary>
+    /// Xóa môn học
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteSubject(
+      [FromRoute] Guid id,
+      CancellationToken cancellationToken)
+    {
+      await subjectService.DeleteSubject(id, cancellationToken);
+      return Ok(ApiResponse.SuccessResponse("Subject deleted successfully."));
+    }
+
+    /// <summary>
     /// Lấy danh sách tài liệu theo môn học có phân trang (chỉ gồm tài liệu cá nhân hoặc tài liệu công khai)
     /// </summary>
     [HttpGet("{subjectId:guid}/documents")]

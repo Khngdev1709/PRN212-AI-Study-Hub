@@ -15,6 +15,8 @@ import {
 import axiosClient from "../../api/axiosClient";
 import styles from "./SubjectsPage.module.css";
 import AddSubjectModal from "./AddSubjectModal";
+import EditSubjectModal from "./EditSubjectModal";
+import DeleteSubjectModal from "./DeleteSubjectModal";
 
 /**
  * Format ISO date string -> Vietnamese short date
@@ -40,8 +42,12 @@ export default function SubjectsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState("newest"); // "newest" | "oldest"
 
-  // Modal
+  // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSubject, setEditingSubject] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingSubject, setDeletingSubject] = useState(null);
 
   // Auto-open Add Subject modal if ?addSubject=1 or ?manageSubjects=1
   useEffect(() => {
@@ -103,15 +109,17 @@ export default function SubjectsPage() {
     navigate(`/subjects/${subjectId}/documents`);
   };
 
-  // ── Edit & Delete action placeholders (stopping propagation) ───────────
+  // ── Edit & Delete actions ───────────────────────────────────────────────
   const handleEdit = (subject, e) => {
     e.stopPropagation();
-    alert(`Chức năng chỉnh sửa môn học "${subject.Name || subject.name}" đang được cập nhật.`);
+    setEditingSubject(subject);
+    setIsEditModalOpen(true);
   };
 
   const handleDelete = (subject, e) => {
     e.stopPropagation();
-    alert(`Chức năng xóa môn học "${subject.Name || subject.name}" đang được cập nhật.`);
+    setDeletingSubject(subject);
+    setIsDeleteModalOpen(true);
   };
 
   return (
@@ -292,6 +300,28 @@ export default function SubjectsPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={fetchSubjects}
+      />
+
+      {/* ── Edit Subject Modal ────────────────────────────────────── */}
+      <EditSubjectModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingSubject(null);
+        }}
+        onSuccess={fetchSubjects}
+        subject={editingSubject}
+      />
+
+      {/* ── Delete Subject Modal ──────────────────────────────────── */}
+      <DeleteSubjectModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeletingSubject(null);
+        }}
+        onSuccess={fetchSubjects}
+        subject={deletingSubject}
       />
     </div>
   );
