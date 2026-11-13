@@ -1,0 +1,64 @@
+/* =========================================================================
+   MainLayout.module.css
+   Collapsible Sidebar transitions & toggle button styling
+   matching ChatboxPage (AI Assistant) UX
+   ========================================================================= */
+
+.sidebar {
+  width: 16rem; /* 256px */
+  min-width: 16rem;
+  max-width: 16rem;
+  height: 100%;
+  background-color: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  display: none;
+  flex-direction: column;
+  position: relative;
+  flex-shrink: 0;
+  user-select: none;
+  z-index: 20;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease;
+}
+
+@media (min-width: 768px) {
+  .sidebar {
+    display: flex;
+  }
+}
+
+.sidebarOpen {
+  transform: translateX(0);
+  margin-left: 0;
+  opacity: 1;
+}
+
+.sidebarClosed {
+  transform: translateX(-100%);
+  margin-left: -16rem;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Floating open button when sidebar is closed */
+.floatingOpenBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.floatingOpenBtn:hover {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}

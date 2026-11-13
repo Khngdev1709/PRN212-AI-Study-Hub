@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import {
   Sparkles,
   PanelLeftClose,
@@ -446,6 +447,10 @@ function ContextMenuPortal({ position, onClose, onRename, onDelete }) {
  * =========================================================================
  */
 export default function ChatboxPage() {
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const hasProcessedNav = useRef(false);
+
   // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window !== "undefined") {
@@ -629,12 +634,14 @@ export default function ChatboxPage() {
   /**
    * 7. SEND MESSAGE / QUERY AI
    */
-  const handleSendMessage = async (customPrompt) => {
+  const handleSendMessage = async (customPrompt, explicitDoc = null) => {
     const textToSend = typeof customPrompt === "string" ? customPrompt : inputText;
     if (!textToSend.trim() || isAiThinking) return;
 
     const userMessageContent = textToSend.trim();
     setInputText("");
+
+    const currentDoc = explicitDoc || attachedDocument;
 
     // Optimistically add User message to local message state
     const optimisticUserMsg = {
@@ -657,7 +664,7 @@ export default function ChatboxPage() {
             ? `${userMessageContent.substring(0, 32)}...`
             : userMessageContent;
 
-        const docIds = attachedDocument ? [attachedDocument.id || attachedDocument.Id] : [];
+        const docIds = currentDoc ? [currentDoc.id || currentDoc.Id] : [];
 
         const createRes = await axiosClient.post("/chat/session", {
           title: initialTitle,
@@ -713,6 +720,77 @@ export default function ChatboxPage() {
       setIsAiThinking(false);
     }
   };
+
+  /**
+   * 7b. HANDLE INCOMING NAVIGATION STATE (Tóm tắt AI / Hỏi đáp tài liệu)
+   */
+  useEffect(() => {
+    if (hasProcessedNav.current) return;
+
+    const navDoc = location.state?.attachedDocument;
+    const navQuery = location.state?.initialQuery;
+    const shouldAutoSend = location.state?.autoSendQuery;
+    const docIdParam = searchParams.get("documentId");
+
+    if (navDoc) {
+      hasProcessedNav.current = true;
+      setAttachedDocument(navDoc);
+      setActiveSessionId(null);
+      setActiveSession(null);
+      setMessages([]);
+
+      // Clear navigation state so browser reload won't re-trigger
+      window.history.replaceState({}, document.title);
+
+      if (shouldAutoSend && navQuery) {
+        // Đồng thời gọi POST /api/v1/ai/summarize để đảm bảo lưu tóm tắt vào DB
+        const docId = navDoc.id || navDoc.Id;
+        if (docId) {
+          axiosClient
+            .post("/ai/summarize", {
+              documentId: docId,
+              documentContent: navDoc.title || navDoc.Title || "",
+            })
+            .catch((err) => {
+              console.warn("Lưu bản tóm tắt DB ngầm:", err);
+            });
+        }
+
+        // Tự động đẩy query vào khung chat và yêu cầu AI xử lý
+        setTimeout(() => {
+          handleSendMessage(navQuery, navDoc);
+        }, 350);
+      } else if (navQuery) {
+        setInputText(navQuery);
+        setTimeout(() => inputRef.current?.focus(), 150);
+      }
+    } else if (docIdParam) {
+      hasProcessedNav.current = true;
+      axiosClient
+        .get(`/documents/${docIdParam}`)
+        .then((res) => {
+          const doc = res.data?.data || res.data;
+          if (doc) {
+            setAttachedDocument(doc);
+            setActiveSessionId(null);
+            setActiveSession(null);
+            setMessages([]);
+          }
+        })
+        .catch((err) => {
+          console.warn("Lỗi khi tải thông tin tài liệu đính kèm:", err);
+        });
+
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("documentId");
+          return next;
+        },
+        { replace: true }
+      );
+    }
+  }, [location.state, searchParams, setSearchParams]);
 
   /**
    * 8. CONTEXT MENU & MODAL HANDLERS

@@ -8,6 +8,7 @@ import Dashboard from "./mainPages/Dashboard";
 import SubjectsPage from "./mainPages/DocumentPage/SubjectsPage";
 import SubjectDocumentsPage from "./mainPages/DocumentPage/SubjectDocumentsPage";
 import ChatboxPage from "./mainPages/ChatboxPage/ChatboxPage";
+import FlashcardsPage from "./mainPages/FlashcardPage/FlashcardsPage";
 
 function App() {
   return (
@@ -26,6 +27,8 @@ function App() {
             <Route path="/subjects/:subjectId/documents" element={<SubjectDocumentsPage />} />
             <Route path="/documents" element={<SubjectsPage />} />
             <Route path="/courses" element={<Navigate to="/subjects" replace />} />
+            <Route path="/flashcards" element={<FlashcardsPage />} />
+            <Route path="/flashcards/:setId" element={<FlashcardsPage />} />
             <Route path="/ai-assistant" element={<ChatboxPage />} />
             <Route path="/chat" element={<ChatboxPage />} />
             <Route path="/chat/:sessionId" element={<ChatboxPage />} />

@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Outlet, NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   GraduationCap,
-  Search,
   Bell,
   Home,
   FileText,
+  Layers,
   Sparkles,
   Users,
   Settings,
@@ -14,8 +14,11 @@ import {
   ChevronDown,
   LogOut,
   User as UserIcon,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import styles from "./MainLayout.module.css";
 
 /**
  * Main navigation items for sidebar
@@ -23,6 +26,7 @@ import { useAuth } from "../hooks/useAuth";
 const NAV_ITEMS = [
   { label: "Tổng quan", icon: Home, to: "/dashboard" },
   { label: "Tài liệu của tôi", icon: FileText, to: "/subjects" },
+  { label: "Flashcards", icon: Layers, to: "/flashcards" },
   { label: "Trợ lý AI", icon: Sparkles, to: "/ai-assistant" },
   { label: "Đã chia sẻ", icon: Users, to: "/shared" },
 ];
@@ -34,12 +38,39 @@ const BOTTOM_NAV_ITEMS = [
 export default function MainLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sidebar_open");
+      if (saved !== null) {
+        return saved === "true";
+      }
+      return window.innerWidth >= 768;
+    }
+    return true;
+  });
 
   const profileRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+
+  const handleCloseSidebar = () => {
+    setSidebarOpen(false);
+    try {
+      localStorage.setItem("sidebar_open", "false");
+    } catch (err) {
+      console.warn("Could not save sidebar state to localStorage", err);
+    }
+  };
+
+  const handleOpenSidebar = () => {
+    setSidebarOpen(true);
+    try {
+      localStorage.setItem("sidebar_open", "true");
+    } catch (err) {
+      console.warn("Could not save sidebar state to localStorage", err);
+    }
+  };
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -70,13 +101,6 @@ export default function MainLayout() {
     navigate("/login");
   };
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/documents?search=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
-
   /**
    * Helper to render NavLink with requested active/inactive styling
    */
@@ -91,7 +115,10 @@ export default function MainLayout() {
             item.to === "/subjects" &&
             (location.pathname.startsWith("/subjects") ||
               location.pathname.startsWith("/documents"));
-          const active = isActive || isDocActive;
+          const isFlashcardActive =
+            item.to === "/flashcards" &&
+            location.pathname.startsWith("/flashcards");
+          const active = isActive || isDocActive || isFlashcardActive;
           return `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm transition-all duration-150 select-none ${
             active
               ? "bg-blue-50 text-blue-700 font-semibold shadow-xs"
@@ -109,20 +136,35 @@ export default function MainLayout() {
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden antialiased">
       
       {/* ══════════════════════════════════════════════════════════
-          1. DESKTOP SIDEBAR (FIXED LEFT)
+          1. DESKTOP SIDEBAR (COLLAPSIBLE LEFT)
       ══════════════════════════════════════════════════════════ */}
-      <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col flex-shrink-0 select-none">
-        
+      <aside
+        className={`${styles.sidebar} ${
+          sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed
+        }`}
+        aria-label="Thanh điều hướng chính"
+      >
         {/* Top Logo Area */}
-        <div className="h-16 flex items-center px-6 gap-2 border-b border-slate-100 flex-shrink-0">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/20 group-hover:bg-blue-700 transition-colors">
+        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-100 flex-shrink-0">
+          <Link to="/" className="flex items-center gap-2 group min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/20 group-hover:bg-blue-700 transition-colors shrink-0">
               <GraduationCap className="w-5 h-5" />
             </div>
-            <span className="text-slate-900 font-bold text-lg tracking-tight">
+            <span className="text-slate-900 font-bold text-lg tracking-tight truncate">
               AI Study Hub
             </span>
           </Link>
+
+          {/* Close Sidebar Button (matching AI Assistant) */}
+          <button
+            type="button"
+            onClick={handleCloseSidebar}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+            title="Đóng thanh menu"
+            aria-label="Đóng thanh menu"
+          >
+            <PanelLeftClose className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Navigation Menu */}
@@ -195,8 +237,8 @@ export default function MainLayout() {
         {/* Headbar (Top - Fixed) */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 flex-shrink-0 z-10">
           
-          {/* Left section: Mobile menu icon + Search bar */}
-          <div className="flex items-center gap-3 flex-1 max-w-xl">
+          {/* Left section: Open Sidebar Toggle & Mobile Menu Icon */}
+          <div className="flex items-center gap-3">
             {/* Mobile Hamburger Menu Icon */}
             <button
               type="button"
@@ -207,19 +249,18 @@ export default function MainLayout() {
               <Menu className="w-5 h-5" />
             </button>
 
-            {/* Search Bar */}
-            <form onSubmit={handleSearchSubmit} className="max-w-md w-full">
-              <div className="bg-slate-100 hover:bg-slate-100/80 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 border border-transparent rounded-full flex items-center px-4 py-2 gap-2.5 transition-all">
-                <Search className="w-4 h-4 text-slate-400 shrink-0" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm tài liệu, môn học hoặc nội dung..."
-                  className="bg-transparent outline-none text-sm w-full text-slate-800 placeholder:text-slate-400"
-                />
-              </div>
-            </form>
+            {/* Desktop Open Sidebar Button (shown when sidebar is closed, matching AI Assistant) */}
+            {!sidebarOpen && (
+              <button
+                type="button"
+                onClick={handleOpenSidebar}
+                className={styles.floatingOpenBtn}
+                title="Mở thanh menu"
+                aria-label="Mở thanh menu"
+              >
+                <PanelLeftOpen className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Right Profile Area */}
