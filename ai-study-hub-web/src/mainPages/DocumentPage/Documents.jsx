@@ -181,6 +181,13 @@ export default function Documents() {
   useEffect(() => {
     fetchDocuments();
     fetchSubjects();
+
+    const handleDocumentUploaded = () => {
+      fetchDocuments();
+    };
+
+    window.addEventListener("document-uploaded", handleDocumentUploaded);
+    return () => window.removeEventListener("document-uploaded", handleDocumentUploaded);
   }, [fetchDocuments, fetchSubjects]);
 
   // ── API: Upload is handled by UploadDocumentModal component ──────────────
@@ -224,22 +231,32 @@ export default function Documents() {
     }
   };
 
-  // ── AI Placeholder Handlers ───────────────────────────────────────────────
-  const handleAIChat = (id) => {
-    // TODO: Navigate to AI chat session pre-loaded with this document
-    navigate(`/ai-assistant?documentId=${id}`);
+  // ── AI Handlers ───────────────────────────────────────────────────────────
+  const handleAIChat = (doc) => {
+    navigate("/ai-assistant", {
+      state: {
+        attachedDocument: doc,
+      },
+    });
   };
 
-  const handleGenerateFlashcard = (id) => {
-    // TODO: Call POST /api/v1/ai/flashcards with documentId
-    console.info("[AI] Tạo flashcard cho tài liệu:", id);
-    alert("Tính năng tạo flashcard đang được phát triển.");
+  const handleAISummary = (doc) => {
+    const docTitle = doc?.title || doc?.Title || doc?.Filename || "tài liệu này";
+    navigate("/ai-assistant", {
+      state: {
+        attachedDocument: doc,
+        initialQuery: `Hãy tóm tắt ngắn gọn và nêu các điểm chính của tài liệu "${docTitle}" giúp mình nhé.`,
+        autoSendQuery: true,
+      },
+    });
   };
 
-  const handleAISummary = (id) => {
-    // TODO: Call POST /api/v1/ai/summary with documentId
-    console.info("[AI] Tạo tóm tắt cho tài liệu:", id);
-    alert("Tính năng tóm tắt AI đang được phát triển.");
+  const handleGenerateFlashcard = (doc) => {
+    navigate("/flashcards", {
+      state: {
+        autoGenerateFromDoc: doc,
+      },
+    });
   };
 
   // ── Client-side filter & search ───────────────────────────────────────────
@@ -480,7 +497,7 @@ export default function Documents() {
                     <button
                       type="button"
                       className={styles.aiActionBtn}
-                      onClick={() => handleAIChat(id)}
+                      onClick={() => handleAIChat(doc)}
                       title="Hỏi Trợ lý AI về tài liệu này"
                     >
                       <Sparkles size={15} />
@@ -488,7 +505,7 @@ export default function Documents() {
                     <button
                       type="button"
                       className={styles.aiActionBtn}
-                      onClick={() => handleAISummary(id)}
+                      onClick={() => handleAISummary(doc)}
                       title="Tạo tóm tắt AI"
                     >
                       <BookOpen size={15} />
@@ -496,7 +513,7 @@ export default function Documents() {
                     <button
                       type="button"
                       className={styles.aiActionBtn}
-                      onClick={() => handleGenerateFlashcard(id)}
+                      onClick={() => handleGenerateFlashcard(doc)}
                       title="Tạo Flashcard"
                     >
                       <MessageSquare size={15} />

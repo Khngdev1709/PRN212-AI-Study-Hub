@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Upload,
   X,
@@ -7,10 +7,9 @@ import {
   Sparkles,
   Lock,
   AlertCircle,
-  Loader2,
-  CheckCircle2,
 } from "lucide-react";
 import axiosClient from "../../api/axiosClient";
+import { useUpload } from "../../hooks/useUpload";
 import styles from "./UploadDocumentModal.module.css";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -57,18 +56,14 @@ export default function UploadDocumentModal({
   const [description, setDescription] = useState("");
   const [subjectId, setSubjectId] = useState(defaultSubjectId || "");
   const [isPublic, setIsPublic] = useState(false);
+  const [error, setError] = useState("");
+
+  const { uploadDocument } = useUpload();
+  const fileInputRef = useRef(null);
 
   // ── Subjects state ─────────────────────────────────────────────────────────
   const [subjects, setSubjects] = useState([]);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
-
-  // ── Upload progress state ──────────────────────────────────────────────────
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0); // 0-100
-  const [uploadDone, setUploadDone] = useState(false);
-  const [error, setError] = useState("");
-
-  const fileInputRef = useRef(null);
 
   // ── Reset all state when modal opens ──────────────────────────────────────
   useEffect(() => {
@@ -80,9 +75,6 @@ export default function UploadDocumentModal({
       setSubjectId(defaultSubjectId || "");
       setIsPublic(false);
       setError("");
-      setUploadProgress(0);
-      setUploadDone(false);
-      setIsUploading(false);
     }
   }, [isOpen, defaultSubjectId]);
 
@@ -157,8 +149,8 @@ export default function UploadDocumentModal({
     setFile(null);
   };
 
-  // ── Form submission — POST /api/v1/documents/upload ───────────────────────
-  const handleSubmit = async (e) => {
+  // ── Form submission — Asynchronous Background Upload ─────────────────────
+  const handleSubmit = (e) => {
     e.preventDefault();
     setError("");
 
@@ -176,65 +168,35 @@ export default function UploadDocumentModal({
       return;
     }
 
-    const formData = new FormData();
-    formData.append("File", file);
-    formData.append("Title", title.trim());
-    formData.append("SubjectId", subjectId);
-    formData.append("IsPublic", isPublic);
-    if (description.trim()) {
-      formData.append("Description", description.trim());
-    }
+    const currentFile = file;
+    const currentTitle = title.trim();
+    const currentSubjectId = subjectId;
+    const currentIsPublic = isPublic;
+    const currentDescription = description.trim();
 
-    setIsUploading(true);
-    setUploadProgress(0);
-    setUploadDone(false);
+    // Close modal immediately so the user can continue working without waiting!
+    onClose?.();
 
-    try {
-      await axiosClient.post("/documents/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        // Track real upload progress via XMLHttpRequest event
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            const pct = Math.round(
-              (progressEvent.loaded / progressEvent.total) * 90
-            ); // cap at 90% — remaining 10% = server-side processing
-            setUploadProgress(pct);
-          }
-        },
-      });
-
-      // Simulate server-side processing phase (90 → 100%)
-      setUploadProgress(95);
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      setUploadProgress(100);
-      setUploadDone(true);
-
-      // Brief delay to let user see the 100% state, then close
-      await new Promise((resolve) => setTimeout(resolve, 700));
-
-      setIsUploading(false);
-      onSuccess?.();
-      onClose?.();
-    } catch (err) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.Message ||
-        "Tải lên thất bại. Vui lòng thử lại.";
-      setError(msg);
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
+    // Trigger non-blocking background upload with floating toast widget
+    uploadDocument({
+      file: currentFile,
+      title: currentTitle,
+      subjectId: currentSubjectId,
+      isPublic: currentIsPublic,
+      description: currentDescription,
+      onSuccess,
+    });
   };
 
   // ── Keyboard: close on Escape ─────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e) => {
-      if (e.key === "Escape" && !isUploading) onClose?.();
+      if (e.key === "Escape") onClose?.();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, isUploading, onClose]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -245,7 +207,7 @@ export default function UploadDocumentModal({
       <div
         className={styles.backdrop}
         onClick={(e) => {
-          if (e.target === e.currentTarget && !isUploading) onClose?.();
+          if (e.target === e.currentTarget) onClose?.();
         }}
       >
         {/* ── Modal ───────────────────────────────────────────────────────── */}
@@ -266,7 +228,6 @@ export default function UploadDocumentModal({
               type="button"
               className={styles.closeBtn}
               onClick={onClose}
-              disabled={isUploading}
               aria-label="Đóng"
             >
               <X size={16} />
@@ -419,63 +380,20 @@ export default function UploadDocumentModal({
                 type="button"
                 className={styles.cancelBtn}
                 onClick={onClose}
-                disabled={isUploading}
               >
                 Hủy
               </button>
               <button
                 type="submit"
                 className={styles.submitBtn}
-                disabled={isUploading}
               >
-                {isUploading ? (
-                  <>
-                    <Loader2 size={14} className={styles.spinIcon} />
-                    Đang xử lý...
-                  </>
-                ) : (
-                  <>
-                    <Upload size={14} />
-                    Tải lên &amp; Xử lý
-                  </>
-                )}
+                <Upload size={14} />
+                Tải lên &amp; Xử lý
               </button>
             </div>
           </form>
         </div>
       </div>
-
-      {/* ── Toast Progress Notification ───────────────────────────────────── */}
-      {isUploading && (
-        <div className={styles.progressToast} role="status" aria-live="polite">
-          <div className={styles.toastHeader}>
-            {uploadDone ? (
-              <CheckCircle2 size={28} style={{ color: "#22c55e", flexShrink: 0 }} />
-            ) : (
-              <div className={styles.toastSpinner} />
-            )}
-            <div className={styles.toastTextGroup}>
-              <span className={styles.toastTitle}>
-                {file?.name || "Tài liệu"}
-              </span>
-              <span className={styles.toastSubtitle}>
-                {uploadDone
-                  ? "Tải lên hoàn tất!"
-                  : `Đang xử lý... Trích xuất dữ liệu AI (${uploadProgress}%)`}
-              </span>
-            </div>
-            <span className={styles.toastPercent}>{uploadProgress}%</span>
-          </div>
-
-          {/* Progress bar — width driven by uploadProgress state */}
-          <div className={styles.progressTrack}>
-            <div
-              className={styles.progressFill}
-              style={{ width: `${uploadProgress}%` }}
-            />
-          </div>
-        </div>
-      )}
     </>
   );
 }

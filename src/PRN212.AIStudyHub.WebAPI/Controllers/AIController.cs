@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PRN212.AIStudyHub.Application.DTOs.AI;
@@ -10,7 +11,10 @@ using PRN212.AIStudyHub.Infrastructure.Data;
 
 namespace PRN212.AIStudyHub.WebAPI.Controllers
 {
+  [Authorize]
   [Route("api/[controller]")]
+  [Route("api/v1/[controller]")]
+  [Tags("AI")]
   public class AIController : BaseApiController
   {
     private readonly IQuickAIService _quickAIService;
@@ -36,11 +40,34 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
         [FromBody] CreateFlashcardsRequestDto request,
         CancellationToken cancellationToken)
     {
-      if (string.IsNullOrWhiteSpace(request.DocumentContent))
-        throw new BadRequestException("Nội dung tài liệu không được để trống.");
-
       if (request.FlashcardSetId == Guid.Empty)
         throw new BadRequestException("FlashcardSetId không được để trống.");
+
+      // Nếu người dùng không truyền trực tiếp DocumentContent, tự động tìm nội dung từ Document / DocumentSummary tương ứng
+      if (string.IsNullOrWhiteSpace(request.DocumentContent))
+      {
+        var set = await _dbContext.FlashcardSet.FirstOrDefaultAsync(s => s.Id == request.FlashcardSetId, cancellationToken);
+        if (set?.DocumentId != null)
+        {
+          var summary = await _dbContext.DocumentSummary.FirstOrDefaultAsync(ds => ds.DocumentId == set.DocumentId, cancellationToken);
+          if (summary != null)
+          {
+            request.DocumentContent = $"{summary.SummaryContent}\n{summary.KeyTakeaways}".Trim();
+          }
+
+          if (string.IsNullOrWhiteSpace(request.DocumentContent))
+          {
+            var doc = await _dbContext.Documents.FirstOrDefaultAsync(d => d.Id == set.DocumentId, cancellationToken);
+            if (doc != null)
+            {
+              request.DocumentContent = $"Tài liệu môn học: {doc.Title}";
+            }
+          }
+        }
+      }
+
+      if (string.IsNullOrWhiteSpace(request.DocumentContent))
+        throw new BadRequestException("Nội dung tài liệu không được để trống.");
 
       var dtoList = await _quickAIService.GenerateFlashcardsAsync(request.DocumentContent);
 
@@ -57,11 +84,32 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
     [ProducesResponseType(typeof(ApiResponse<DocumentSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> SummarizeDocument([FromBody] SummarizeRequestDto request)
     {
-      if (string.IsNullOrWhiteSpace(request.DocumentContent))
-        throw new BadRequestException("Nội dung tài liệu không được để trống.");
-
       if (request.DocumentId == Guid.Empty)
         throw new BadRequestException("DocumentId không được để trống.");
+
+      // Nếu DocumentContent trống, kiểm tra xem bản tóm tắt đã được tạo sẵn trong DB chưa
+      if (string.IsNullOrWhiteSpace(request.DocumentContent))
+      {
+        var existing = await _dbContext.DocumentSummary.FirstOrDefaultAsync(ds => ds.DocumentId == request.DocumentId);
+        if (existing != null && !string.IsNullOrWhiteSpace(existing.SummaryContent))
+        {
+          var existingDto = new DocumentSummaryDto
+          {
+            SummaryContent = existing.SummaryContent,
+            KeyTakeaways = existing.KeyTakeaways ?? string.Empty
+          };
+          return Ok(ApiResponse<DocumentSummaryDto>.SuccessResponse(existingDto, "Lấy tóm tắt tài liệu thành công."));
+        }
+
+        var doc = await _dbContext.Documents.FirstOrDefaultAsync(d => d.Id == request.DocumentId);
+        if (doc != null)
+        {
+          request.DocumentContent = $"Tài liệu học tập: {doc.Title}";
+        }
+      }
+
+      if (string.IsNullOrWhiteSpace(request.DocumentContent))
+        throw new BadRequestException("Nội dung tài liệu không được để trống.");
 
       var dto = await _deepAIService.SummarizeDocumentAsync(request.DocumentContent);
 
@@ -88,6 +136,24 @@ namespace PRN212.AIStudyHub.WebAPI.Controllers
       await _dbContext.SaveChangesAsync();
 
       return Ok(ApiResponse<DocumentSummaryDto>.SuccessResponse(dto, "Tóm tắt tài liệu thành công."));
+    }
+
+    [HttpGet("summary/{documentId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<DocumentSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDocumentSummary([FromRoute] Guid documentId)
+    {
+      var summary = await _dbContext.DocumentSummary.FirstOrDefaultAsync(ds => ds.DocumentId == documentId);
+      if (summary == null)
+      {
+        return NotFound(ApiResponse.FailureResponse("Chưa có tóm tắt cho tài liệu này."));
+      }
+
+      var dto = new DocumentSummaryDto
+      {
+        SummaryContent = summary.SummaryContent,
+        KeyTakeaways = summary.KeyTakeaways ?? string.Empty
+      };
+      return Ok(ApiResponse<DocumentSummaryDto>.SuccessResponse(dto, "Lấy tóm tắt tài liệu thành công."));
     }
   }
 }

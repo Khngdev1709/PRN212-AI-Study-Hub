@@ -25,14 +25,38 @@ namespace PRN212.AIStudyHub.Infrastructure.AI
       var apiKey = _options.ApiKey;
       _liteModelId = !string.IsNullOrWhiteSpace(_options.FlashLiteModel)
           ? _options.FlashLiteModel
-          : "gemini-3.1-flash-lite";
+          : "gemini-3.5-flash-lite";
 
       _flashModelId = !string.IsNullOrWhiteSpace(_options.FlashModel)
           ? _options.FlashModel
-          : (!string.IsNullOrWhiteSpace(_options.FallbackModel) ? _options.FallbackModel : "gemini-3.8-flash");
+          : (!string.IsNullOrWhiteSpace(_options.FallbackModel) ? _options.FallbackModel : "gemini-flash-lite-latest");
 
       _client = new Client(apiKey: apiKey);
       _httpClientFactory = httpClientFactory;
+    }
+
+    private List<string> GetCandidateModels()
+    {
+      var list = new List<string>();
+      if (!string.IsNullOrWhiteSpace(_flashModelId)) list.Add(_flashModelId);
+      if (!string.IsNullOrWhiteSpace(_liteModelId) && !list.Contains(_liteModelId, StringComparer.OrdinalIgnoreCase)) list.Add(_liteModelId);
+      if (!string.IsNullOrWhiteSpace(_options.FallbackModel) && !list.Contains(_options.FallbackModel, StringComparer.OrdinalIgnoreCase)) list.Add(_options.FallbackModel);
+
+      // Danh sách các model Gemini phản hồi nhanh & ổn định
+      string[] defaults = [
+        "gemini-3.5-flash-lite",
+        "gemini-flash-lite-latest",
+        "gemini-3.1-flash-lite-preview",
+        "gemini-3-flash-preview"
+      ];
+
+      foreach (var m in defaults)
+      {
+        if (!list.Contains(m, StringComparer.OrdinalIgnoreCase))
+          list.Add(m);
+      }
+
+      return list;
     }
 
     public async Task<List<FlashcardDto>> GenerateFlashcardsAsync(string documentContent)
@@ -52,27 +76,72 @@ Tài liệu:
         ResponseMimeType = "application/json"
       };
 
-      var response = await _client.Models.GenerateContentAsync(
-        model: _liteModelId,
-        contents: prompt,
-        config: config
-      );
+      var candidateModels = GetCandidateModels();
+      Exception? lastEx = null;
+      string lastRawText = "[]";
 
-      var rawText = CleanJsonResponse(response.Text ?? "[]");
-
-      try
+      // 1. Thử qua Google GenAI SDK với danh sách model dự phòng
+      foreach (var model in candidateModels)
       {
-        var flashcards = JsonSerializer.Deserialize<List<FlashcardDto>>(rawText, new JsonSerializerOptions
+        try
         {
-          PropertyNameCaseInsensitive = true
-        });
+          var response = await _client.Models.GenerateContentAsync(
+            model: model,
+            contents: prompt,
+            config: config
+          );
 
-        return flashcards ?? new List<FlashcardDto>();
+          var rawText = CleanJsonResponse(response.Text ?? "[]");
+          lastRawText = rawText;
+
+          var flashcards = JsonSerializer.Deserialize<List<FlashcardDto>>(rawText, new JsonSerializerOptions
+          {
+            PropertyNameCaseInsensitive = true
+          });
+
+          if (flashcards != null && flashcards.Count > 0)
+            return flashcards;
+        }
+        catch (Exception ex)
+        {
+          lastEx = ex;
+        }
       }
-      catch (JsonException ex)
+
+      // 2. Nếu SDK gặp sự cố quá tải, fallback gọi trực tiếp qua HTTP REST Endpoint
+      var client = _httpClientFactory.CreateClient();
+      var httpPayload = new
       {
-        throw new InvalidOperationException($"Lỗi phân tích JSON kết quả Flashcards từ Gemini: {ex.Message}. Nội dung AI trả về: {rawText}", ex);
+        contents = new[] { new { parts = new[] { new { text = prompt } } } },
+        generationConfig = new { responseMimeType = "application/json" }
+      };
+      var jsonPayload = JsonSerializer.Serialize(httpPayload);
+      var httpContent = new System.Net.Http.StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json");
+
+      foreach (var model in candidateModels)
+      {
+        try
+        {
+          var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_options.ApiKey}";
+          var res = await client.PostAsync(url, httpContent);
+          if (res.IsSuccessStatusCode)
+          {
+            var body = await res.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            var text = doc.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
+            var rawText = CleanJsonResponse(text ?? "[]");
+            var flashcards = JsonSerializer.Deserialize<List<FlashcardDto>>(rawText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (flashcards != null && flashcards.Count > 0)
+              return flashcards;
+          }
+        }
+        catch (Exception ex)
+        {
+          lastEx = ex;
+        }
       }
+
+      throw new InvalidOperationException($"Lỗi phân tích JSON kết quả Flashcards từ Gemini: {lastEx?.Message}. Nội dung AI trả về: {lastRawText}", lastEx);
     }
 
     public async Task<DocumentSummaryDto> SummarizeDocumentAsync(string documentContent)
@@ -92,13 +161,11 @@ Tài liệu:
         ResponseMimeType = "application/json"
       };
 
-      var candidateModels = new List<string>();
-      if (!string.IsNullOrWhiteSpace(_flashModelId)) candidateModels.Add(_flashModelId);
-      if (!candidateModels.Contains(_liteModelId, StringComparer.OrdinalIgnoreCase)) candidateModels.Add(_liteModelId);
-
+      var candidateModels = GetCandidateModels();
       Exception? lastEx = null;
       string lastRawText = "{}";
 
+      // 1. Thử qua Google GenAI SDK với danh sách model dự phòng
       foreach (var model in candidateModels)
       {
         try
@@ -117,8 +184,41 @@ Tài liệu:
             PropertyNameCaseInsensitive = true
           });
 
-          if (summary != null)
+          if (summary != null && !string.IsNullOrWhiteSpace(summary.SummaryContent))
             return summary;
+        }
+        catch (Exception ex)
+        {
+          lastEx = ex;
+        }
+      }
+
+      // 2. Fallback trực tiếp qua HTTP REST Endpoint
+      var client = _httpClientFactory.CreateClient();
+      var httpPayload = new
+      {
+        contents = new[] { new { parts = new[] { new { text = prompt } } } },
+        generationConfig = new { responseMimeType = "application/json" }
+      };
+      var jsonPayload = JsonSerializer.Serialize(httpPayload);
+      var httpContent = new System.Net.Http.StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json");
+
+      foreach (var model in candidateModels)
+      {
+        try
+        {
+          var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_options.ApiKey}";
+          var res = await client.PostAsync(url, httpContent);
+          if (res.IsSuccessStatusCode)
+          {
+            var body = await res.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            var text = doc.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
+            var rawText = CleanJsonResponse(text ?? "{}");
+            var summary = JsonSerializer.Deserialize<DocumentSummaryDto>(rawText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (summary != null && !string.IsNullOrWhiteSpace(summary.SummaryContent))
+              return summary;
+          }
         }
         catch (Exception ex)
         {
@@ -289,7 +389,7 @@ Bạn là một gia sư AI thích ứng thông minh (AI Tutor) trong ứng dụn
     private static string CleanJsonResponse(string text)
     {
       if (string.IsNullOrWhiteSpace(text))
-        return text;
+        return "{}";
 
       var cleaned = text.Trim();
       if (cleaned.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
@@ -304,6 +404,29 @@ Bạn là một gia sư AI thích ứng thông minh (AI Tutor) trong ứng dụn
       if (cleaned.EndsWith("```"))
       {
         cleaned = cleaned[..^3];
+      }
+
+      cleaned = cleaned.Trim();
+
+      // Tự động cô lập khối JSON [...] hoặc {...} nếu AI chèn thêm chữ giải thích
+      var firstBracket = cleaned.IndexOf('[');
+      var firstBrace = cleaned.IndexOf('{');
+
+      if (firstBracket >= 0 && (firstBrace < 0 || firstBracket < firstBrace))
+      {
+        var lastBracket = cleaned.LastIndexOf(']');
+        if (lastBracket > firstBracket)
+        {
+          cleaned = cleaned.Substring(firstBracket, lastBracket - firstBracket + 1);
+        }
+      }
+      else if (firstBrace >= 0)
+      {
+        var lastBrace = cleaned.LastIndexOf('}');
+        if (lastBrace > firstBrace)
+        {
+          cleaned = cleaned.Substring(firstBrace, lastBrace - firstBrace + 1);
+        }
       }
 
       return cleaned.Trim();

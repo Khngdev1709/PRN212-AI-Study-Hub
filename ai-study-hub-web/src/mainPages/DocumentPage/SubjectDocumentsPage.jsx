@@ -162,7 +162,18 @@ export default function SubjectDocumentsPage() {
 
   useEffect(() => {
     fetchSubjectAndDocs();
-  }, [fetchSubjectAndDocs]);
+
+    const handleDocumentUploaded = (e) => {
+      // Re-fetch when an upload completes, especially if related to this subject
+      const uploadedSubjectId = e.detail?.subjectId;
+      if (!uploadedSubjectId || !subjectId || uploadedSubjectId.toLowerCase() === subjectId.toLowerCase()) {
+        fetchSubjectAndDocs();
+      }
+    };
+
+    window.addEventListener("document-uploaded", handleDocumentUploaded);
+    return () => window.removeEventListener("document-uploaded", handleDocumentUploaded);
+  }, [fetchSubjectAndDocs, subjectId]);
 
   // ── Delete Document ───────────────────────────────────────────────────────
   const handleDelete = async (id) => {
@@ -199,19 +210,32 @@ export default function SubjectDocumentsPage() {
     }
   };
 
-  // ── AI Placeholders ───────────────────────────────────────────────────────
-  const handleAIChat = (id) => {
-    navigate(`/ai-assistant?documentId=${id}`);
+  // ── AI Handlers ───────────────────────────────────────────────────────────
+  const handleAIChat = (doc) => {
+    navigate("/ai-assistant", {
+      state: {
+        attachedDocument: doc,
+      },
+    });
   };
 
-  const handleGenerateFlashcard = (id) => {
-    console.info("[AI] Tạo flashcard cho tài liệu:", id);
-    alert("Tính năng tạo flashcard đang được phát triển.");
+  const handleAISummary = (doc) => {
+    const docTitle = doc?.title || doc?.Title || doc?.Filename || "tài liệu này";
+    navigate("/ai-assistant", {
+      state: {
+        attachedDocument: doc,
+        initialQuery: `Hãy tóm tắt ngắn gọn và nêu các điểm chính của tài liệu "${docTitle}" giúp mình nhé.`,
+        autoSendQuery: true,
+      },
+    });
   };
 
-  const handleAISummary = (id) => {
-    console.info("[AI] Tạo tóm tắt cho tài liệu:", id);
-    alert("Tính năng tóm tắt AI đang được phát triển.");
+  const handleGenerateFlashcard = (doc) => {
+    navigate("/flashcards", {
+      state: {
+        autoGenerateFromDoc: doc,
+      },
+    });
   };
 
   // ── Client-side filter & search ───────────────────────────────────────────
@@ -446,7 +470,7 @@ export default function SubjectDocumentsPage() {
                     <button
                       type="button"
                       className={styles.aiActionBtn}
-                      onClick={() => handleAIChat(id)}
+                      onClick={() => handleAIChat(doc)}
                       title="Hỏi Trợ lý AI về tài liệu này"
                     >
                       <Sparkles size={15} />
@@ -454,7 +478,7 @@ export default function SubjectDocumentsPage() {
                     <button
                       type="button"
                       className={styles.aiActionBtn}
-                      onClick={() => handleAISummary(id)}
+                      onClick={() => handleAISummary(doc)}
                       title="Tạo tóm tắt AI"
                     >
                       <BookOpen size={15} />
@@ -462,7 +486,7 @@ export default function SubjectDocumentsPage() {
                     <button
                       type="button"
                       className={styles.aiActionBtn}
-                      onClick={() => handleGenerateFlashcard(id)}
+                      onClick={() => handleGenerateFlashcard(doc)}
                       title="Tạo Flashcard"
                     >
                       <MessageSquare size={15} />
